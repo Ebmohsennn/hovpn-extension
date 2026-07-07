@@ -1,0 +1,33 @@
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  hovpn.vip · Hovpn extension site (static)
+#  ArvanCloud fronts hovpn.vip and provides public TLS; Arvan connects to this
+#  origin over plain HTTP on :8080. Served HTTP-only (no origin cert). The
+#  explicit bind makes this site claim the HTTP listener so it serves content
+#  instead of being caught by the automatic HTTP->HTTPS redirect.
+# ═══════════════════════════════════════════════════════════════════════════════
+http://hovpn.vip {
+	bind {$ORIGIN_IP} 127.0.0.1
+
+	encode zstd gzip
+
+	root * /var/www/hovpn.vip/public_html
+
+	@dotfiles {
+		path /.* /.*/*
+		not path /.well-known/*
+	}
+	respond @dotfiles 404
+
+	# clean URLs: /support -> support.html, /privacy -> privacy.html, etc.
+	try_files {path} {path}.html {path}/ =404
+	file_server
+
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+	# force downloads for helper installers
+	header /download/* Content-Disposition "attachment"
+}
