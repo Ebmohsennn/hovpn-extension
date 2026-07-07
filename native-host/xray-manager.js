@@ -1,25 +1,39 @@
 #!/usr/bin/env node
-// Native messaging host for the "V2Ray Proxy for Chrome" extension.
+/*! Hovpn — © 2026 Mohsen (ebmohsen.com). All rights reserved. https://hovpn.vip
+ *  Proprietary. Unauthorized copying, modification, or redistribution prohibited. */
+// Hovpn native messaging host — cross-platform (macOS, Windows, Linux).
 //
 // Chrome's chrome.runtime.sendNativeMessage() is one-shot: it spawns this
 // process, sends one message, waits for one reply, then tears the connection
-// down. So xray-core is spawned fully detached (own process group, stdio
-// ignored/unreffed) and its pid/port are persisted to a state file — that way
-// xray keeps running after this script exits, and later "stop"/"status"
-// invocations (which are fresh processes too) can find it again.
+// down. So xray-core is spawned fully detached and its pid/port are persisted
+// to a state file — that way xray keeps running after this script exits, and
+// later "stop"/"status" invocations (fresh processes too) can find it again.
 
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
 const net = require('net');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
-const STATE_DIR = path.join(os.homedir(), '.v2ray-chrome-ext');
+const IS_WIN = process.platform === 'win32';
+
+// State + bundled binaries live under a single per-user directory so the
+// installer and the host agree on where xray-core is, on every OS.
+const STATE_DIR = path.join(
+  IS_WIN ? (process.env.LOCALAPPDATA || os.homedir()) : os.homedir(),
+  IS_WIN ? 'Hovpn' : '.hovpn'
+);
+const BIN_DIR = path.join(STATE_DIR, 'bin');
 const STATE_FILE = path.join(STATE_DIR, 'state.json');
 const CONFIG_FILE = path.join(STATE_DIR, 'xray-config.json');
 const LOG_FILE = path.join(STATE_DIR, 'xray.log');
 
-const XRAY_CANDIDATES = ['xray', '/opt/homebrew/bin/xray', '/usr/local/bin/xray'];
+const XRAY_EXE = IS_WIN ? 'xray.exe' : 'xray';
+// Prefer the copy the Hovpn installer placed in BIN_DIR; fall back to a
+// system-wide install on PATH / common locations.
+const XRAY_CANDIDATES = IS_WIN
+  ? [path.join(BIN_DIR, XRAY_EXE), 'xray.exe', 'xray']
+  : [path.join(BIN_DIR, XRAY_EXE), 'xray', '/opt/homebrew/bin/xray', '/usr/local/bin/xray', '/usr/bin/xray'];
 
 function ensureDir() {
   fs.mkdirSync(STATE_DIR, { recursive: true });
@@ -54,10 +68,16 @@ function isAlive(pid) {
 function stopExisting() {
   const state = readState();
   if (state && isAlive(state.pid)) {
-    try {
-      process.kill(-state.pid, 'SIGTERM'); // negative pid = whole process group (spawned detached)
-    } catch {
-      try { process.kill(state.pid, 'SIGTERM'); } catch { /* already dead */ }
+    if (IS_WIN) {
+      // Windows has no process groups; taskkill /T ends the whole tree.
+      try { spawnSync('taskkill', ['/PID', String(state.pid), '/T', '/F'], { windowsHide: true }); }
+      catch { /* already dead */ }
+    } else {
+      try {
+        process.kill(-state.pid, 'SIGTERM'); // negative pid = whole process group (spawned detached)
+      } catch {
+        try { process.kill(state.pid, 'SIGTERM'); } catch { /* already dead */ }
+      }
     }
   }
   clearState();
@@ -84,7 +104,11 @@ function trySpawn(bin, args, outFd) {
   return new Promise((resolve) => {
     let child;
     try {
-      child = spawn(bin, args, { detached: true, stdio: ['ignore', outFd, outFd] });
+      child = spawn(bin, args, {
+        detached: true,
+        stdio: ['ignore', outFd, outFd],
+        windowsHide: true // don't flash a console window on Windows
+      });
     } catch (e) {
       resolve({ ok: false, error: e.message });
       return;
@@ -129,8 +153,8 @@ async function handleStart(config, socksPort) {
 
   return {
     ok: false,
-    error: 'xray binary not found or failed to start. Install Xray-core ' +
-      '(https://github.com/XTLS/Xray-core) and make sure `xray` is on PATH, or check ' + LOG_FILE
+    error: 'xray-core not found or failed to start. Re-run the Hovpn installer ' +
+      '(native-host/install.sh or install.bat) to download it, or check ' + LOG_FILE
   };
 }
 

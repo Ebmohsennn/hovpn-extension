@@ -5,7 +5,7 @@
 // Also runs a periodic background health check (chrome.alarms) so crash
 // recovery doesn't depend on the popup being open.
 
-const NATIVE_HOST = 'com.v2raychrome.xraymanager';
+const NATIVE_HOST = 'com.hovpn.host';
 const HEALTHCHECK_ALARM = 'v2ray-healthcheck';
 
 async function getSettings() {

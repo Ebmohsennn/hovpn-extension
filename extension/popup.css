@@ -467,15 +467,30 @@ input:focus, select:focus, textarea:focus {
 .row.active .row-action:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 .row-action:disabled { opacity: 0.55; cursor: default; }
 
-.row-del {
+.row-edit, .row-del {
   width: 24px; height: 24px; flex-shrink: 0;
   border: none; background: transparent; color: var(--text-faint);
-  border-radius: 6px; cursor: pointer; font-size: 15px; line-height: 1;
+  border-radius: 6px; cursor: pointer; line-height: 1;
   display: inline-flex; align-items: center; justify-content: center;
   opacity: 0.35; transition: opacity 0.13s ease, color 0.13s ease, background 0.13s ease;
 }
-.row:hover .row-del { opacity: 1; }
+.row-del { font-size: 15px; }
+.row:hover .row-edit, .row:hover .row-del { opacity: 1; }
+.row-edit:hover { background: var(--accent-soft); color: var(--accent); }
 .row-del:hover { background: var(--danger-soft); color: var(--danger); }
+
+/* Small heading shown atop a panel when it's in edit (not add) mode */
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-muted);
+}
+.panel-head .cancel-edit {
+  border: none; background: transparent; color: var(--text-muted);
+  font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0;
+  cursor: pointer; padding: 2px 4px; border-radius: 5px;
+}
+.panel-head .cancel-edit:hover { color: var(--danger); }
 
 /* ----- Footer / add panels ----- */
 .footer { margin-top: 12px; }

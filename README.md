@@ -1,8 +1,10 @@
-# V2Ray Proxy for Chrome
+# Hovpn — secure proxy for Chrome
 
-A Chrome extension that lets you paste a V2Ray/Xray share link (`vmess://`,
-`vless://`, `trojan://`, `ss://`) and route **only Chrome's** traffic through
-it — the rest of your system is untouched.
+© 2026 Mohsen ([ebmohsen.com](https://ebmohsen.com)) · [hovpn.vip](https://hovpn.vip) · Proprietary (see LICENSE)
+
+Hovpn lets you paste a V2Ray/Xray share link (`vmess://`, `vless://`,
+`trojan://`, `ss://`) or a **subscription URL** and route **only the
+browser's** traffic through it — the rest of your system is untouched.
 
 ## Why two pieces
 
@@ -10,48 +12,64 @@ Chrome extensions can't speak the VMess/VLESS/Trojan protocol directly (no
 raw socket access in the extension sandbox). So the actual proxying is done
 by a real `xray-core` process running locally; the extension just:
 
-1. Tells Chrome (via `chrome.proxy`) to send its traffic to
+1. Tells the browser (via `chrome.proxy`) to send its traffic to
    `socks5://127.0.0.1:<port>`, and
 2. Uses a small **native messaging host** (`native-host/xray-manager.js`) to
-   start/stop that local `xray-core` process with your pasted config.
+   start/stop that local `xray-core` process with your config.
 
 ```
-Chrome  --chrome.proxy-->  127.0.0.1:1080 (xray-core, SOCKS5 inbound)  --VMess/VLESS/Trojan-->  your server
+Browser --chrome.proxy--> 127.0.0.1:1080 (xray-core, SOCKS5) --VLESS/VMess/Trojan--> your server
   ^
-  extension popup (paste link, Connect/Disconnect)
-  extension background.js <--native messaging--> xray-manager.js (spawns/kills xray-core)
+  popup (connect UI, server list, subscriptions)
+  background.js <--native messaging--> xray-manager.js (spawns/kills xray-core)
 ```
 
 ## Prerequisites
 
-- **Node.js** (for the native messaging host — no npm packages needed, it
-  only uses built-in modules).
-- **Xray-core**, with the `xray` binary reachable on your `PATH` (or at
-  `/opt/homebrew/bin/xray` / `/usr/local/bin/xray`). Get it from
-  https://github.com/XTLS/Xray-core/releases, or via Homebrew if you have a
-  tap for it (`brew search xray`). If you download a raw binary on macOS,
-  you may need to clear the quarantine flag once:
-  `xattr -d com.apple.quarantine /path/to/xray`.
+- **Node.js** — the installer and native host run on Node (no npm packages;
+  built-ins only). Install from https://nodejs.org (Windows) / `brew install
+  node` (macOS) / your package manager (Linux).
+- **xray-core** — you do **not** need to install this yourself; the installer
+  auto-downloads the correct binary for your OS/arch from the official
+  [XTLS/Xray-core releases](https://github.com/XTLS/Xray-core/releases) into
+  `~/.hovpn/bin` (`%LOCALAPPDATA%\Hovpn\bin` on Windows).
 
 ## 1. Load the extension
 
-1. Open `chrome://extensions`, enable **Developer mode** (top right).
+1. Open `chrome://extensions` (or `edge://extensions`, `brave://extensions`),
+   enable **Developer mode**.
 2. Click **Load unpacked**, select the `extension/` folder.
-3. Copy the **ID** Chrome shows for the extension (a long lowercase string).
+3. Copy the **ID** shown under the extension (a 32-letter string).
 
-## 2. Install the native messaging host
+## 2. Install the native host (cross-platform)
 
+The installer registers the native host for Chrome, Chromium, Edge and Brave,
+and downloads xray-core for you.
+
+**macOS / Linux:**
 ```bash
 cd native-host
 ./install.sh <extension-id-you-copied>
 ```
 
-This writes the host manifest to
-`~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.v2raychrome.xraymanager.json`
-(macOS path — adjust in `install.sh` for Linux/Windows) and makes the
-scripts executable.
+**Windows** (Command Prompt or PowerShell):
+```bat
+cd native-host
+install.bat <extension-id-you-copied>
+```
 
-Reload the extension at `chrome://extensions` after this step.
+Both are thin wrappers around the real cross-platform installer,
+`node install.js <extension-id>`, which:
+- downloads xray-core if it isn't already in the Hovpn bin dir;
+- writes a launcher that starts the host with an **absolute** Node path
+  (Chrome launches native hosts with a minimal PATH that excludes
+  Homebrew/nvm, so a bare `node` would fail);
+- registers the `com.hovpn.host` manifest — a JSON file under each browser's
+  `NativeMessagingHosts` directory on macOS/Linux, or a JSON file plus an
+  `HKCU\…\NativeMessagingHosts\com.hovpn.host` registry key on Windows.
+
+**Fully quit and reopen the browser** after this step (a plain reload of the
+extension is not always enough for the browser to pick up a new native host).
 
 ## 3. Use it
 
@@ -76,6 +94,11 @@ Reload the extension at `chrome://extensions` after this step.
    run automatically when the popup opens and on demand via the refresh icon.
    It measures reachability of the front server, not full round-trip time
    through the proxied protocol.
+6. **Rename / edit**: the pencil on any server row opens an editor to rename
+   it or change its link; a subscription's **Edit** button (in its card
+   header) renames it or points it at a new URL. Renaming a subscription
+   without changing its URL is instant (no re-fetch); changing the URL
+   re-imports from the new address.
 
 Profiles are stored in `chrome.storage.local` (not synced across machines —
 a subscription can import hundreds of servers, which would blow past
@@ -130,20 +153,22 @@ tick, so a persistently broken connection doesn't spam you.
 
 ## Troubleshooting
 
-- **"xray failed to start" / binary not found**: confirm `which xray` works
-  in a normal terminal, or add its absolute path to `XRAY_CANDIDATES` in
-  `native-host/xray-manager.js`.
-- **Native host errors ("Access to the specified native messaging host is
-  forbidden" or similar)**: re-run `install.sh` with the correct extension
-  ID — it must exactly match what's shown at `chrome://extensions` (IDs
-  change if you remove and re-add an unpacked extension).
-- **Logs**: `xray-core`'s stdout/stderr are appended to
-  `~/.v2ray-chrome-ext/xray.log`; the generated config it's running is at
-  `~/.v2ray-chrome-ext/xray-config.json`.
-- **Stuck proxy after a crash**: `chrome://settings/system` won't show
-  anything (this never touches OS-level proxy settings), but you can clear
-  Chrome's extension-set proxy by clicking Disconnect, or by removing the
-  extension.
+- **"xray-core not found / failed to start"**: re-run the installer
+  (`install.sh` / `install.bat`) — it re-downloads xray-core. The binary
+  lives at `~/.hovpn/bin/xray` (`%LOCALAPPDATA%\Hovpn\bin\xray.exe` on
+  Windows).
+- **"Specified native messaging host not found" / "Native host has exited"**:
+  re-run the installer with the correct extension ID (it must exactly match
+  `chrome://extensions`; IDs change if you remove and re-add an unpacked
+  extension), then **fully quit and reopen the browser**. "Host has exited"
+  almost always means Node wasn't found — the installer bakes an absolute
+  Node path into the launcher to avoid this.
+- **Logs**: xray-core's output is appended to `~/.hovpn/xray.log`
+  (`%LOCALAPPDATA%\Hovpn\xray.log`); the generated config it runs is
+  `~/.hovpn/xray-config.json`.
+- **Stuck proxy after a crash**: this never touches OS-level proxy settings,
+  so nothing shows in system settings; clear the browser's extension-set
+  proxy by clicking Disconnect or removing the extension.
 
 ## Known limitations
 
@@ -184,9 +209,18 @@ tick, so a persistently broken connection doesn't spam you.
   timeout/DNS failure, all 4 probes running in parallel (~3s wall time total,
   not 12s serial). Also re-tested against all 10 real subscription servers
   (~194ms total for all 10 in parallel).
-- All extension JS files pass `node --check`; `manifest.json` and the native
-  host manifest template are valid JSON. All popup DOM element IDs
-  referenced from `popup.js` were cross-checked against `popup.html`.
+- **Cross-platform installer** was verified end-to-end **on macOS
+  (arm64)**: `install.js` auto-downloaded the correct xray build, registered
+  `com.hovpn.host` for Chrome/Chromium/Edge/Brave, and the launcher → host →
+  bundled xray → SOCKS proxy chain worked under Chrome's minimal launch PATH.
+  The **Windows** path (registry registration via `reg`, `.bat` launcher,
+  `taskkill` process management, `xray.exe`, PowerShell unzip) and the
+  **Linux** path are written to Chrome's documented requirements but have
+  **not** been run on real Windows/Linux machines from here — they need a
+  pass on those OSes before you rely on them.
+- All extension JS files pass `node --check`; `manifest.json` is valid JSON.
+  All popup DOM element IDs referenced from `popup.js` were cross-checked
+  against `popup.html`.
 - The popup/background/options UI (the new hero power button, search/sort,
   favorites, theming, live timer, desktop notifications) has **not** been
   driven in an actual Chrome window from here — no browser automation tool
@@ -194,6 +228,7 @@ tick, so a persistently broken connection doesn't spam you.
   quick-connect via the power button, favorite/search/sort a few servers,
   confirm outbound traffic actually goes through your server (check your IP
   via a "what's my IP" site with the proxy on vs off), toggle the theme
-  option, and try killing `xray-core` manually (`pkill -f xray-config.json`)
-  to see both the popup's "(auto-restarted)" state and — if you wait up to a
-  minute with the popup closed — the background desktop notification.
+  option, and try killing `xray-core` manually (`pkill -f xray-config.json`,
+  or `taskkill` on Windows) to see both the popup's "(auto-restarted)" state
+  and — if you wait up to a minute with the popup closed — the background
+  desktop notification.

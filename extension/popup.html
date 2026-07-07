@@ -78,12 +78,14 @@
     </div>
 
     <div id="addForm" class="panel hidden">
+      <div id="addHead" class="panel-head hidden"><span>Edit server</span><button class="cancel-edit" id="addCancel" type="button">Cancel</button></div>
       <input id="newName" type="text" placeholder="Name (optional)" />
       <textarea id="newLink" placeholder="vmess:// · vless:// · trojan:// · ss://"></textarea>
       <button id="saveProfile" class="btn-primary" type="button">Save server</button>
     </div>
 
     <div id="subForm" class="panel hidden">
+      <div id="subHead" class="panel-head hidden"><span>Edit subscription</span><button class="cancel-edit" id="subCancel" type="button">Cancel</button></div>
       <input id="subLabel" type="text" placeholder="Label (optional)" />
       <input id="subUrl" type="text" placeholder="https://provider.com/sub/…" />
       <button id="fetchSub" class="btn-primary" type="button">Fetch &amp; import</button>

@@ -44,9 +44,69 @@ const ICON_SPINNER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
   document.documentElement.dataset.theme = theme === 'auto' ? '' : theme;
 })();
 
+const addHead = el('addHead');
+const subHead = el('subHead');
+const saveProfileBtn = el('saveProfile');
+
+// Edit mode: when set, the corresponding panel updates an existing item
+// instead of creating a new one.
+let editingProfileId = null;
+let editingSubUrl = null;
+
+function resetServerForm() {
+  editingProfileId = null;
+  newName.value = ''; newLink.value = '';
+  addHead.classList.add('hidden');
+  saveProfileBtn.textContent = 'Save server';
+}
+function resetSubForm() {
+  editingSubUrl = null;
+  subLabel.value = ''; subUrl.value = '';
+  subHead.classList.add('hidden');
+  fetchSubBtn.textContent = 'Fetch & import';
+}
+
 el('optionsBtn').addEventListener('click', () => chrome.runtime.openOptionsPage());
-addToggle.addEventListener('click', () => { subForm.classList.add('hidden'); addForm.classList.toggle('hidden'); });
-subToggle.addEventListener('click', () => { addForm.classList.add('hidden'); subForm.classList.toggle('hidden'); });
+addToggle.addEventListener('click', () => {
+  subForm.classList.add('hidden');
+  const willShow = addForm.classList.contains('hidden');
+  addForm.classList.toggle('hidden');
+  if (willShow) resetServerForm(); // opening fresh via the toolbar = add mode
+});
+subToggle.addEventListener('click', () => {
+  addForm.classList.add('hidden');
+  const willShow = subForm.classList.contains('hidden');
+  subForm.classList.toggle('hidden');
+  if (willShow) resetSubForm();
+});
+el('addCancel').addEventListener('click', () => { addForm.classList.add('hidden'); resetServerForm(); });
+el('subCancel').addEventListener('click', () => { subForm.classList.add('hidden'); resetSubForm(); });
+
+// Open the server panel prefilled to rename/edit an existing profile.
+function openServerEdit(profile) {
+  subForm.classList.add('hidden');
+  editingProfileId = profile.id;
+  newName.value = profile.name;
+  newLink.value = profile.rawLink;
+  addHead.classList.remove('hidden');
+  saveProfileBtn.textContent = 'Save changes';
+  addForm.classList.remove('hidden');
+  newName.focus();
+  newName.select();
+}
+
+// Open the subscription panel prefilled to rename/edit an existing subscription.
+function openSubEdit(url, label) {
+  addForm.classList.add('hidden');
+  editingSubUrl = url;
+  subLabel.value = label;
+  subUrl.value = url;
+  subHead.classList.remove('hidden');
+  fetchSubBtn.textContent = 'Save changes';
+  subForm.classList.remove('hidden');
+  subLabel.focus();
+  subLabel.select();
+}
 
 let latencies = {};         // profileId -> ms | null
 let latencyTesting = false; // true while a ping batch is in flight
@@ -221,20 +281,35 @@ powerBtn.addEventListener('click', async () => {
 });
 
 // --- profile CRUD ---
-el('saveProfile').addEventListener('click', async () => {
+saveProfileBtn.addEventListener('click', async () => {
   errorEl.textContent = '';
   const link = newLink.value.trim();
   if (!link) { errorEl.textContent = 'Paste a share link first'; return; }
   const parsed = parseShareLink(link);
   if (!parsed.ok) { errorEl.textContent = parsed.error; return; }
+  const name = newName.value.trim() || parsed.outbound.remark || parsed.outbound.address;
   const profiles = await getProfiles();
-  profiles.push({
-    id: crypto.randomUUID(),
-    name: newName.value.trim() || parsed.outbound.remark || parsed.outbound.address,
-    rawLink: link, subscriptionUrl: null, favorite: false
-  });
+
+  if (editingProfileId) {
+    const p = profiles.find((x) => x.id === editingProfileId);
+    if (p) {
+      // If the edited profile is the live connection and its link changed,
+      // drop the connection so a stale tunnel isn't left running.
+      const state = await getState();
+      if (state.connected && state.activeProfileId === p.id && p.rawLink !== link) {
+        await chrome.runtime.sendMessage({ action: 'disconnect' });
+      }
+      p.name = name;
+      p.rawLink = link;
+      delete latencies[p.id]; // force a re-test since the endpoint may have changed
+    }
+  } else {
+    profiles.push({ id: crypto.randomUUID(), name, rawLink: link, subscriptionUrl: null, favorite: false });
+  }
+
   await setProfiles(profiles);
-  newName.value = ''; newLink.value = ''; addForm.classList.add('hidden');
+  addForm.classList.add('hidden');
+  resetServerForm();
   render().then(() => testLatency(cachedProfiles));
 });
 
@@ -275,14 +350,30 @@ fetchSubBtn.addEventListener('click', async () => {
   const url = subUrl.value.trim();
   if (!url) { errorEl.textContent = 'Paste a subscription URL first'; return; }
   if (!/^https?:\/\//i.test(url)) { errorEl.textContent = 'URL must start with http:// or https://'; return; }
-  fetchSubBtn.disabled = true; fetchSubBtn.textContent = 'Fetching…';
+  fetchSubBtn.disabled = true; fetchSubBtn.textContent = editingSubUrl ? 'Saving…' : 'Fetching…';
   try {
-    await importSubscription(url, subLabel.value.trim());
-    subLabel.value = ''; subUrl.value = ''; subForm.classList.add('hidden');
+    if (editingSubUrl && editingSubUrl === url) {
+      // URL unchanged — this is a pure label rename, so don't hit the network
+      // (the provider might be down and the rename should still work).
+      const label = subLabel.value.trim() || safeHostname(url);
+      const profiles = await getProfiles();
+      for (const p of profiles) if (p.subscriptionUrl === url) p.subscriptionLabel = label;
+      await setProfiles(profiles);
+    } else {
+      // New subscription, or an edit that changed the URL: drop the old group
+      // (if any) then fetch the new one.
+      if (editingSubUrl && editingSubUrl !== url) {
+        const profiles = await getProfiles();
+        await setProfiles(profiles.filter((p) => p.subscriptionUrl !== editingSubUrl));
+      }
+      await importSubscription(url, subLabel.value.trim());
+    }
+    subForm.classList.add('hidden'); resetSubForm();
   } catch (e) {
     errorEl.textContent = e.message;
   } finally {
-    fetchSubBtn.disabled = false; fetchSubBtn.textContent = 'Fetch & import';
+    fetchSubBtn.disabled = false;
+    fetchSubBtn.textContent = editingSubUrl ? 'Save changes' : 'Fetch & import';
     render().then(() => testLatency(cachedProfiles));
   }
 });
@@ -362,6 +453,14 @@ function rowEl(profile, state) {
   spacer.className = 'row-spacer';
   meta.appendChild(spacer);
 
+  const edit = document.createElement('button');
+  edit.type = 'button';
+  edit.className = 'row-edit';
+  edit.title = 'Rename / edit';
+  edit.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+  edit.addEventListener('click', (e) => { e.stopPropagation(); openServerEdit(profile); });
+  meta.appendChild(edit);
+
   const action = document.createElement('button');
   action.type = 'button';
   action.className = 'row-action';
@@ -433,6 +532,11 @@ function subHeaderEl(url, members) {
   const spacer = document.createElement('span');
   spacer.className = 'spacer';
   h.append(ico, lab, c, spacer);
+
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'mini-btn'; edit.textContent = 'Edit';
+  edit.addEventListener('click', () => openSubEdit(url, label));
+  h.appendChild(edit);
 
   const refresh = document.createElement('button');
   refresh.type = 'button'; refresh.className = 'mini-btn'; refresh.textContent = 'Refresh';
