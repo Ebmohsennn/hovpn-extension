@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="1">
+    <title>Hovpn</title>
+    <organization>com.hovpn</organization>
+    <!-- Current-user-home only: installs to ~/.hovpn, no admin password,
+         no system-wide changes. -->
+    <domains enable_localSystem="false" enable_currentUserHome="true" enable_anywhere="false"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="false"/>
+    <welcome file="welcome.html" mime-type="text/html"/>
+    <conclusion file="conclusion.html" mime-type="text/html"/>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.hovpn.host.pkg"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.hovpn.host.pkg" visible="false">
+        <pkg-ref id="com.hovpn.host.pkg"/>
+    </choice>
+    <pkg-ref id="com.hovpn.host.pkg" version="1.0.0" onConclusion="none">hovpn-component.pkg</pkg-ref>
+</installer-gui-script>

@@ -12,6 +12,7 @@ native-host/xray-manager-host
 # Never commit credentials or secrets of any kind
 *.pem
 *.key
+keys/hovpn-private-key.pem
 *service-account*.json
 *credentials*.json
 *client_secret*.json
@@ -27,3 +28,16 @@ state.json
 # Build artifacts
 *.zip
 dist/
+
+# Packaging: large bundled binaries + build outputs (reproduce via
+# packaging/mac/fetch-binaries.sh; not committed to keep the repo light)
+packaging/mac/scripts/node-*
+packaging/mac/scripts/xray-*
+packaging/mac/scripts/hovpn-host.js
+packaging/mac/build/
+packaging/mac/out/
+packaging/store/build/
+packaging/store/*.zip
+
+# Signing / key material
+keys/hovpn-private-key.pem

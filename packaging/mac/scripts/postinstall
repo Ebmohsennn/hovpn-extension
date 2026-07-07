@@ -1,0 +1,58 @@
+#!/bin/bash
+# Hovpn macOS installer — postinstall.
+# Package is built with enable_currentUserHome=true / enable_localSystem=false,
+# so this runs as the invoking user with $HOME already correct — no admin
+# password, no sudo, no separate "who's really logged in" trick needed.
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+HOVPN_DIR="$HOME/.hovpn"
+EXT_ID="mbjbjjnaihiegbpjdjoflfmehppobbod"
+
+mkdir -p "$HOVPN_DIR/bin"
+
+# `uname -m` reports the CURRENT PROCESS's architecture, which lies under
+# Rosetta translation (observed: /usr/sbin/installer itself can run its
+# postinstall script under the x86_64 slice on real Apple Silicon hardware).
+# sysctl -n hw.optional.arm64 reports the TRUE hardware regardless of
+# translation and is the correct check here.
+if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ]; then
+  cp "$SCRIPT_DIR/node-arm64" "$HOVPN_DIR/bin/node"
+  cp "$SCRIPT_DIR/xray-arm64" "$HOVPN_DIR/bin/xray"
+else
+  cp "$SCRIPT_DIR/node-x64" "$HOVPN_DIR/bin/node"
+  cp "$SCRIPT_DIR/xray-x64" "$HOVPN_DIR/bin/xray"
+fi
+chmod +x "$HOVPN_DIR/bin/node" "$HOVPN_DIR/bin/xray"
+
+cp "$SCRIPT_DIR/hovpn-host.js" "$HOVPN_DIR/hovpn-host.js"
+
+cat > "$HOVPN_DIR/hovpn-host" <<LAUNCHER
+#!/bin/bash
+exec "$HOVPN_DIR/bin/node" "$HOVPN_DIR/hovpn-host.js"
+LAUNCHER
+chmod +x "$HOVPN_DIR/hovpn-host"
+
+MANIFEST_JSON=$(cat <<JSON
+{
+  "name": "com.hovpn.host",
+  "description": "Hovpn native host — manages a local xray-core process",
+  "path": "$HOVPN_DIR/hovpn-host",
+  "type": "stdio",
+  "allowed_origins": ["chrome-extension://$EXT_ID/"]
+}
+JSON
+)
+
+for BROWSER_DIR in \
+  "Google/Chrome" \
+  "Chromium" \
+  "Microsoft Edge" \
+  "BraveSoftware/Brave-Browser"
+do
+  TARGET="$HOME/Library/Application Support/$BROWSER_DIR/NativeMessagingHosts"
+  mkdir -p "$TARGET"
+  printf '%s' "$MANIFEST_JSON" > "$TARGET/com.hovpn.host.json"
+done
+
+exit 0

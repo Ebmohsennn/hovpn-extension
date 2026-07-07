@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Hovpn installer for macOS / Linux. Thin wrapper around the cross-platform
-# Node installer. Usage: ./install.sh <chrome-extension-id>
+# Node installer. Usage: ./install.sh  (no arguments needed — targets Hovpn's
+# own fixed extension ID; pass one explicitly only for a differently-keyed build)
 set -euo pipefail
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

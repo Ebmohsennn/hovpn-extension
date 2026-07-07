@@ -3,7 +3,12 @@
  *  Proprietary. Unauthorized copying, modification, or redistribution prohibited. */
 // Hovpn cross-platform installer for the native messaging host.
 //
-//   node install.js <chrome-extension-id>
+//   node install.js [chrome-extension-id]
+//
+// The extension ID defaults to Hovpn's own fixed ID (derived from the "key"
+// baked into extension/manifest.json — see keys/EXTENSION_ID.txt) so a normal
+// user never has to find and paste anything; an override is still accepted
+// for local development against a differently-keyed build.
 //
 // It (1) ensures xray-core is present (downloads it if not), (2) writes a
 // launcher that starts the host with an absolute Node path — Chrome launches
@@ -21,6 +26,7 @@ const HOST_NAME = 'com.hovpn.host';
 const IS_WIN = process.platform === 'win32';
 const HOME = os.homedir();
 const DIR = __dirname;
+const DEFAULT_EXTENSION_ID = 'mbjbjjnaihiegbpjdjoflfmehppobbod';
 
 const STATE_DIR = path.join(IS_WIN ? (process.env.LOCALAPPDATA || HOME) : HOME, IS_WIN ? 'Hovpn' : '.hovpn');
 const BIN_DIR = path.join(STATE_DIR, 'bin');
@@ -127,10 +133,10 @@ function ensureXray() {
 }
 
 function main() {
-  const extId = process.argv[2];
-  if (!extId || !/^[a-p]{32}$/.test(extId)) {
-    console.error('Usage: node install.js <chrome-extension-id>');
-    console.error('  The ID is the 32-letter string shown under the extension at chrome://extensions');
+  const extId = process.argv[2] || DEFAULT_EXTENSION_ID;
+  if (!/^[a-p]{32}$/.test(extId)) {
+    console.error('Usage: node install.js [chrome-extension-id]');
+    console.error('  Defaults to Hovpn\'s own fixed ID; only pass one to target a different build.');
     process.exit(1);
   }
 
