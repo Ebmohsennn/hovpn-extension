@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — Hovpn</title>
+<meta name="description" content="Hovpn privacy policy. No accounts, no tracking, no telemetry." />
+<link rel="icon" href="assets/icon.png" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="assets/icon.png" alt="Hovpn" />Ho<span>vpn</span></a>
+    <nav class="top">
+      <a href="/#features">Features</a>
+      <a href="/#install">Install</a>
+      <a href="/support">Support</a>
+      <a class="btn" href="/#install">Get Hovpn</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap content">
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: 8 July 2026</p>
+
+  <p>Hovpn is a browser proxy client operated by Mohsen (<a href="https://ebmohsen.com">ebmohsen.com</a>) under the Hovpn brand. This policy explains exactly what Hovpn does and does not do with your data.</p>
+
+  <h2>Data we collect</h2>
+  <p><strong>None.</strong> Hovpn has no user accounts, no analytics, and no telemetry. We operate no servers that receive your data through the extension.</p>
+
+  <h2>Data stored on your device only</h2>
+  <ul>
+    <li>The server profiles and subscription URLs you add are stored locally in your browser on your own machine. They are never transmitted to us.</li>
+    <li>Your settings (proxy port, bypass list, theme) are stored locally.</li>
+    <li>The local helper writes a runtime configuration and log file under your own user folder (<code>~/.hovpn</code> on macOS/Linux, <code>%LOCALAPPDATA%\Hovpn</code> on Windows).</li>
+  </ul>
+
+  <h2>Network connections Hovpn makes</h2>
+  <ul>
+    <li><strong>To your proxy server(s)</strong>, as configured by you — this is the core function.</li>
+    <li><strong>To your subscription URL</strong>, when you add or refresh a subscription, to download your own server list. This request is made by the local helper.</li>
+    <li><strong>To GitHub / nodejs.org</strong>, only during installation of the helper, to download the proxy engine and runtime.</li>
+  </ul>
+  <p>Hovpn does not send your browsing activity anywhere except through the proxy server you selected.</p>
+
+  <h2>Permissions the extension requests</h2>
+  <ul>
+    <li><code>proxy</code> — to point the browser at your local proxy port.</li>
+    <li><code>storage</code> — to save your server list and settings locally.</li>
+    <li><code>nativeMessaging</code> — to communicate with the local helper that runs the proxy engine.</li>
+    <li><code>alarms</code> — to periodically check the connection is still alive.</li>
+    <li><code>notifications</code> — to alert you if the connection drops or is restored.</li>
+  </ul>
+
+  <h2>Third parties</h2>
+  <p>Hovpn does not sell, rent, or share any data with third parties. It contains no advertising and no third-party analytics.</p>
+
+  <h2>Children</h2>
+  <p>Hovpn is a general-purpose networking tool and is not directed at children under 13.</p>
+
+  <h2>Changes</h2>
+  <p>If this policy changes, the updated version will be posted on this page with a new date.</p>
+
+  <h2>Contact</h2>
+  <p>Questions: <a href="mailto:support@hovpn.vip">support@hovpn.vip</a> · <a href="/">hovpn.vip</a></p>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="assets/icon.png" alt="" />Ho<span>vpn</span></a>
+    <nav><a href="/">Home</a><a href="/support">Support</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
+    <span class="copy">© 2026 Mohsen · hovpn.vip</span>
+  </div>
+</footer>
+</body>
+</html>

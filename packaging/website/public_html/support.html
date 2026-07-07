@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Support — Hovpn</title>
+<meta name="description" content="How to install and use Hovpn, troubleshooting, and FAQ." />
+<link rel="icon" href="assets/icon.png" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="assets/icon.png" alt="Hovpn" />Ho<span>vpn</span></a>
+    <nav class="top">
+      <a href="/#features">Features</a>
+      <a href="/#install">Install</a>
+      <a href="/support">Support</a>
+      <a class="btn" href="/#install">Get Hovpn</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap content">
+  <h1>Support</h1>
+  <p class="updated">Everything you need to get Hovpn running.</p>
+
+  <h2>Installing Hovpn</h2>
+  <div class="steps">
+    <div class="step"><div><h3>Add the extension</h3><p>Install the Hovpn extension from the Chrome Web Store. It works in Chrome, Edge, Brave and Chromium.</p></div></div>
+    <div class="step"><div><h3>Install the helper</h3><p>Download the helper for your system and run it once. It's a one-time setup that bundles everything (no need to install anything else).</p>
+      <p style="margin-top:10px"><a class="btn ghost" href="/download/Hovpn-helper-macos.pkg">macOS</a> <a class="btn ghost" href="/download/Hovpn-Setup.exe">Windows</a></p></div></div>
+    <div class="step"><div><h3>Restart your browser</h3><p>Fully quit and reopen the browser so it detects the helper.</p></div></div>
+    <div class="step"><div><h3>Connect</h3><p>Click the Hovpn icon, add a server (paste a config link) or a subscription URL, and press the big button.</p></div></div>
+  </div>
+
+  <h2>Why do I need the helper?</h2>
+  <p>For security, web browsers can't run a proxy engine on their own. Hovpn's helper is a tiny local app that runs the actual connection on your computer; the extension is just the interface that controls it. Every proxy or VPN-style browser extension works this way. The helper installs only into your own user folder and can be removed at any time.</p>
+
+  <h2>Frequently asked questions</h2>
+  <details><summary>Does Hovpn provide servers?</summary><p>No. Hovpn is the software you use to connect to <em>your own</em> server or subscription. You bring the config link or subscription URL from your provider.</p></details>
+  <details><summary>Does it slow down my whole computer?</summary><p>No. Only your browser's traffic is routed through the proxy. Everything else on your computer connects normally.</p></details>
+  <details><summary>Is my data collected?</summary><p>No. There is no account, no analytics, and no telemetry. Your server list and settings are stored only on your device. See the <a href="/privacy">Privacy Policy</a>.</p></details>
+  <details><summary>macOS says the helper "can't be opened"</summary><p>Make sure you downloaded it from hovpn.vip and open it by double-clicking. If macOS still blocks it, right-click the installer and choose <em>Open</em>, then confirm.</p></details>
+  <details><summary>Windows SmartScreen shows a warning</summary><p>Click <em>More info → Run anyway</em>. The installer is safe; this warning appears for new apps until they build reputation.</p></details>
+  <details><summary>The extension says the helper isn't installed</summary><p>Install the helper for your system (above), then fully quit and reopen your browser. If you removed and re-added the extension, its ID may have changed — reinstall the helper.</p></details>
+  <details><summary>It won't connect</summary><p>Check that your config link or subscription is valid and current, try a different server, and confirm your provider's server is online. Latency shown as "timeout" means that server isn't reachable right now.</p></details>
+
+  <h2>Contact</h2>
+  <p>Questions or issues? Reach us at <a href="mailto:support@hovpn.vip">support@hovpn.vip</a> or visit <a href="/">hovpn.vip</a>.</p>
+
+  <h2>References & credits</h2>
+  <ul>
+    <li>Proxy engine: <a href="https://github.com/XTLS/Xray-core" rel="noopener">Xray-core</a> (Mozilla Public License 2.0), bundled with the helper.</li>
+    <li>Runtime: <a href="https://nodejs.org" rel="noopener">Node.js</a>, bundled with the helper.</li>
+    <li>Hovpn extension &amp; helper: © 2026 Mohsen — proprietary. See <a href="/terms">Terms</a>.</li>
+  </ul>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <a class="brand" href="/"><img src="assets/icon.png" alt="" />Ho<span>vpn</span></a>
+    <nav><a href="/">Home</a><a href="/support">Support</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
+    <span class="copy">© 2026 Mohsen · hovpn.vip</span>
+  </div>
+</footer>
+</body>
+</html>
