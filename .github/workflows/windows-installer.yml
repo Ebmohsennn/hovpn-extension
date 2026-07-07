@@ -1,0 +1,64 @@
+name: Build Windows installer
+
+on:
+  push:
+    paths:
+      - 'packaging/windows/**'
+      - 'native-host/xray-manager.js'
+      - '.github/workflows/windows-installer.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      NODE_VER: v24.18.0
+      XRAY_VER: v26.3.27
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage host script
+        shell: pwsh
+        run: Copy-Item native-host/xray-manager.js packaging/windows/hovpn-host.js
+
+      - name: Download bundled node.exe + xray.exe (x64)
+        shell: pwsh
+        run: |
+          $bin = "packaging/windows/bin"
+          New-Item -ItemType Directory -Force -Path $bin | Out-Null
+          Invoke-WebRequest -Uri "https://nodejs.org/dist/$env:NODE_VER/win-x64/node.exe" -OutFile "$bin/node.exe"
+          Invoke-WebRequest -Uri "https://github.com/XTLS/Xray-core/releases/download/$env:XRAY_VER/Xray-windows-64.zip" -OutFile "$env:TEMP/xray.zip"
+          Expand-Archive -Path "$env:TEMP/xray.zip" -DestinationPath "$env:TEMP/xray" -Force
+          Copy-Item "$env:TEMP/xray/xray.exe" "$bin/xray.exe"
+          Get-ChildItem $bin
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Compile installer
+        shell: pwsh
+        working-directory: packaging/windows
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" hovpn.iss
+          Get-ChildItem out
+
+      - name: Run installer silently
+        shell: pwsh
+        working-directory: packaging/windows
+        run: |
+          Start-Process -FilePath ".\out\Hovpn-Setup.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          Write-Host "Installed. Contents of %LOCALAPPDATA%\Hovpn:"
+          Get-ChildItem "$env:LOCALAPPDATA\Hovpn" -Recurse | Select-Object FullName
+
+      - name: Smoke test (node + xray + native messaging + SOCKS)
+        shell: pwsh
+        working-directory: packaging/windows
+        run: node smoke-test.js
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Hovpn-Setup-Windows
+          path: packaging/windows/out/Hovpn-Setup.exe
+          if-no-files-found: error
