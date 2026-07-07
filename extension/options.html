@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hovpn — Settings</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f4f5fa; --surface: #ffffff; --surface-2: #f7f8fc;
+      --text: #14151c; --text-muted: #6b7180; --text-faint: #9aa0ae;
+      --border: #e6e8f0; --accent: #4f46e5; --accent-hover: #4338ca;
+      --accent-soft: rgba(79,70,229,0.10); --success: #16a34a;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0c0d12; --surface:#14161e; --surface-2:#191c26; --text:#eef0f7;
+        --text-muted:#969cad; --text-faint:#5f6576; --border:#23262f; --accent:#7b73ff;
+        --accent-hover:#8f88ff; --accent-soft:rgba(123,115,255,0.16); --success:#34d17a; }
+    }
+    :root[data-theme="light"] { color-scheme: light;
+      --bg:#f4f5fa; --surface:#ffffff; --surface-2:#f7f8fc; --text:#14151c;
+      --text-muted:#6b7180; --text-faint:#9aa0ae; --border:#e6e8f0; --accent:#4f46e5;
+      --accent-hover:#4338ca; --accent-soft:rgba(79,70,229,0.10); --success:#16a34a; }
+    :root[data-theme="dark"] { color-scheme: dark;
+      --bg:#0c0d12; --surface:#14161e; --surface-2:#191c26; --text:#eef0f7;
+      --text-muted:#969cad; --text-faint:#5f6576; --border:#23262f; --accent:#7b73ff;
+      --accent-hover:#8f88ff; --accent-soft:rgba(123,115,255,0.16); --success:#34d17a; }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--text); margin: 0; padding: 32px 20px;
+      -webkit-font-smoothing: antialiased; font-size: 14px;
+    }
+    .card {
+      max-width: 480px; margin: 0 auto; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 16px; padding: 26px 24px;
+      box-shadow: 0 6px 24px rgba(20,21,40,0.06);
+    }
+    .head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .head .mark {
+      width: 30px; height: 30px; border-radius: 8px;
+      background: linear-gradient(160deg, var(--accent), var(--accent-hover));
+      display: grid; place-items: center; color: #fff;
+    }
+    h1 { font-size: 17px; margin: 0; letter-spacing: -0.01em; }
+    .sub { color: var(--text-muted); font-size: 13px; margin: 0 0 22px; }
+    label { display: block; margin-top: 20px; font-size: 13px; font-weight: 600; }
+    .hint { display: block; color: var(--text-muted); font-weight: 400; font-size: 12px; margin-top: 2px; }
+    input, select, textarea {
+      width: 100%; margin-top: 8px; padding: 9px 10px; font: inherit; font-size: 13px;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: var(--surface-2); color: var(--text);
+    }
+    textarea { resize: vertical; min-height: 62px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+    input:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .row2 { display: flex; gap: 14px; }
+    .row2 > div { flex: 1; }
+    button {
+      margin-top: 24px; padding: 10px 20px; border: none; border-radius: 10px;
+      background: var(--accent); color: #fff; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    button:hover { background: var(--accent-hover); }
+    #saved { color: var(--success); font-size: 13px; margin-top: 12px; min-height: 18px; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <span class="mark">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg>
+      </span>
+      <h1>Hovpn Settings</h1>
+    </div>
+    <p class="sub">Chrome-only secure proxy · <a href="https://hovpn.vip" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">hovpn.vip</a></p>
+
+    <label>Appearance
+      <span class="hint">How the popup and this page are themed.</span>
+      <select id="theme">
+        <option value="auto">Match system</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </label>
+
+    <div class="row2">
+      <div>
+        <label>SOCKS5 port
+          <span class="hint">Local port xray-core listens on.</span>
+          <input id="port" type="number" min="1" max="65535" />
+        </label>
+      </div>
+    </div>
+
+    <label>Bypass list
+      <span class="hint">Comma-separated hosts always excluded from the proxy.</span>
+      <textarea id="bypass" rows="3"></textarea>
+    </label>
+
+    <button id="save" type="button">Save changes</button>
+    <div id="saved"></div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
