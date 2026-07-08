@@ -41,3 +41,6 @@ packaging/store/*.zip
 
 # Signing / key material
 keys/hovpn-private-key.pem
+
+# Signed extension package (rebuildable)
+*.crx
