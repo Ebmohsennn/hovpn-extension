@@ -1,0 +1,74 @@
+name: Publish to Chrome Web Store
+
+# Publishes the extension automatically when its version changes on main
+# (bump extension/manifest.json → push → it uploads + submits for review),
+# or on demand via the "Run workflow" button.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'extension/**'
+  workflow_dispatch:
+
+env:
+  ITEM_ID: ifcbhfjmblebbinhgjhfmjgnkmoneifg   # Hovpn's Web Store item id (public)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # need the previous commit to detect a version change
+
+      - name: Decide whether to publish
+        id: gate
+        run: |
+          NEW=$(node -p "require('./extension/manifest.json').version")
+          git show HEAD~1:extension/manifest.json > /tmp/old.json 2>/dev/null || echo '{}' > /tmp/old.json
+          OLD=$(node -p "try { require('/tmp/old.json').version } catch (e) { '' }")
+          echo "current=$NEW previous=$OLD event=${{ github.event_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$NEW" != "$OLD" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::extension version unchanged ($NEW) — skipping publish"
+          fi
+
+      - name: Verify secrets are configured
+        if: steps.gate.outputs.go == 'true'
+        run: |
+          missing=""
+          [ -z "${{ secrets.CWS_CLIENT_ID }}" ] && missing="$missing CWS_CLIENT_ID"
+          [ -z "${{ secrets.CWS_CLIENT_SECRET }}" ] && missing="$missing CWS_CLIENT_SECRET"
+          [ -z "${{ secrets.CWS_REFRESH_TOKEN }}" ] && missing="$missing CWS_REFRESH_TOKEN"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing GitHub secrets:$missing — see WEBSTORE-PUBLISH.md"
+            exit 1
+          fi
+
+      - name: Build store zip (strip key)
+        if: steps.gate.outputs.go == 'true'
+        run: |
+          rm -rf build hovpn-store.zip
+          cp -r extension build
+          node -e "const fs=require('fs'),p='build/manifest.json',m=JSON.parse(fs.readFileSync(p));delete m.key;fs.writeFileSync(p,JSON.stringify(m,null,2))"
+          find build -name '.DS_Store' -delete
+          ( cd build && zip -rq ../hovpn-store.zip . )
+          echo "built hovpn-store.zip ($(node -p "require('./extension/manifest.json').version"))"
+
+      - name: Upload + publish to Chrome Web Store
+        if: steps.gate.outputs.go == 'true'
+        run: |
+          npx --yes chrome-webstore-upload-cli@3 upload \
+            --source hovpn-store.zip \
+            --extension-id "$ITEM_ID" \
+            --client-id "${{ secrets.CWS_CLIENT_ID }}" \
+            --client-secret "${{ secrets.CWS_CLIENT_SECRET }}" \
+            --refresh-token "${{ secrets.CWS_REFRESH_TOKEN }}"
+          npx --yes chrome-webstore-upload-cli@3 publish \
+            --extension-id "$ITEM_ID" \
+            --client-id "${{ secrets.CWS_CLIENT_ID }}" \
+            --client-secret "${{ secrets.CWS_CLIENT_SECRET }}" \
+            --refresh-token "${{ secrets.CWS_REFRESH_TOKEN }}"
+          echo "::notice::Uploaded + submitted for review. It goes live after Google's review passes."
