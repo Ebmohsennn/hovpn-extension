@@ -35,6 +35,10 @@ try {
 const reg = spawnSync('reg', ['query', 'HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.hovpn.host'], { encoding: 'utf8' });
 check('Chrome registry key present', reg.status === 0 && /com\.hovpn\.host\.json/i.test(reg.stdout));
 
+// 3b. force-install policy written (extension auto-installs, no Web Store)
+const pol = spawnSync('reg', ['query', 'HKCU\\Software\\Policies\\Google\\Chrome\\ExtensionInstallForcelist'], { encoding: 'utf8' });
+check('Chrome force-install policy present', pol.status === 0 && /mbjbjjnaihiegbpjdjoflfmehppobbod;https:\/\/hovpn\.vip\/updates\.xml/i.test(pol.stdout));
+
 // 4. drive the native host (framed protocol) — start/status/stop
 function callHost(msg) {
   const json = Buffer.from(JSON.stringify(msg), 'utf8');

@@ -41,6 +41,13 @@ Root: HKCU; Subkey: "Software\Microsoft\Edge\NativeMessagingHosts\com.hovpn.host
 Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.hovpn.host"; ValueType: string; ValueName: ""; ValueData: "{app}\com.hovpn.host.json"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Chromium\NativeMessagingHosts\com.hovpn.host"; ValueType: string; ValueName: ""; ValueData: "{app}\com.hovpn.host.json"; Flags: uninsdeletekey
 
+; ── Force-install the Hovpn extension from the self-hosted update URL ──
+; Chromium browsers read enterprise policy from HKCU too, so this needs no
+; admin. "<id>;<update-url>" auto-installs and pins the extension.
+Root: HKCU; Subkey: "Software\Policies\Google\Chrome\ExtensionInstallForcelist"; ValueType: string; ValueName: "1"; ValueData: "{#ExtId};https://hovpn.vip/updates.xml"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Policies\Microsoft\Edge\ExtensionInstallForcelist"; ValueType: string; ValueName: "1"; ValueData: "{#ExtId};https://hovpn.vip/updates.xml"; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Policies\BraveSoftware\Brave-Browser\ExtensionInstallForcelist"; ValueType: string; ValueName: "1"; ValueData: "{#ExtId};https://hovpn.vip/updates.xml"; Flags: uninsdeletevalue
+
 [UninstallDelete]
 Type: files; Name: "{app}\hovpn-host.bat"
 Type: files; Name: "{app}\com.hovpn.host.json"
