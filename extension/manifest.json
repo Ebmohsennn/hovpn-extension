@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Hovpn",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hovpn — secure, elegant proxy for Chrome. Import your config or subscription and route only Chrome's traffic.",
   "author": "Mohsen (ebmohsen.com)",
   "homepage_url": "https://hovpn.vip",
