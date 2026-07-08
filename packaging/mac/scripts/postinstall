@@ -6,7 +6,10 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-EXT_ID="mbjbjjnaihiegbpjdjoflfmehppobbod"
+# Trust both Hovpn extension identities: the Chrome Web Store build, and the
+# self-hosted CRX id used by the all-in-one force-install path.
+EXT_ID="mbjbjjnaihiegbpjdjoflfmehppobbod"   # self-hosted CRX id (force-install)
+STORE_ID="ifcbhfjmblebbinhgjhfmjgnkmoneifg" # Chrome Web Store id
 UPDATE_URL="https://hovpn.vip/updates.xml"
 
 # Running as root, so $HOME is root's — find the real console user + home.
@@ -45,7 +48,7 @@ MANIFEST_JSON=$(cat <<JSON
   "description": "Hovpn native host — manages a local xray-core process",
   "path": "$HOVPN_DIR/hovpn-host",
   "type": "stdio",
-  "allowed_origins": ["chrome-extension://$EXT_ID/"]
+  "allowed_origins": ["chrome-extension://$STORE_ID/", "chrome-extension://$EXT_ID/"]
 }
 JSON
 )

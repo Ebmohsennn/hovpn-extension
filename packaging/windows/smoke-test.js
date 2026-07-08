@@ -26,7 +26,8 @@ for (const rel of ['bin\\node.exe', 'bin\\xray.exe', 'hovpn-host.js', 'hovpn-hos
 try {
   const m = JSON.parse(fs.readFileSync(path.join(APP, 'com.hovpn.host.json'), 'utf8'));
   check('manifest name is com.hovpn.host', m.name === 'com.hovpn.host');
-  check('manifest allowed_origins set', Array.isArray(m.allowed_origins) && m.allowed_origins.length === 1);
+  check('manifest trusts the store id', Array.isArray(m.allowed_origins) &&
+    m.allowed_origins.includes('chrome-extension://ifcbhfjmblebbinhgjhfmjgnkmoneifg/'));
 } catch (e) {
   check('manifest parses', false);
 }

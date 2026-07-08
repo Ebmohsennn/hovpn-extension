@@ -27,6 +27,9 @@ const IS_WIN = process.platform === 'win32';
 const HOME = os.homedir();
 const DIR = __dirname;
 const DEFAULT_EXTENSION_ID = 'mbjbjjnaihiegbpjdjoflfmehppobbod';
+// Also trust the Chrome Web Store build of Hovpn (different id than the
+// self-hosted CRX), so the store extension can reach the same native host.
+const STORE_EXTENSION_ID = 'ifcbhfjmblebbinhgjhfmjgnkmoneifg';
 
 const STATE_DIR = path.join(IS_WIN ? (process.env.LOCALAPPDATA || HOME) : HOME, IS_WIN ? 'Hovpn' : '.hovpn');
 const BIN_DIR = path.join(STATE_DIR, 'bin');
@@ -55,12 +58,15 @@ function writeLauncher() {
 }
 
 function manifest(extId, launcherPath) {
+  // Trust the requested id plus the store build (deduped), so both the
+  // self-hosted and Web Store installs reach the same host.
+  const ids = [...new Set([extId, STORE_EXTENSION_ID])];
   return {
     name: HOST_NAME,
     description: 'Hovpn native host — manages a local xray-core process',
     path: launcherPath,
     type: 'stdio',
-    allowed_origins: [`chrome-extension://${extId}/`]
+    allowed_origins: ids.map((id) => `chrome-extension://${id}/`)
   };
 }
 

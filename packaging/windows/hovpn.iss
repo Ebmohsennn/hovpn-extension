@@ -7,6 +7,7 @@
 
 #define AppVersion "1.0.0"
 #define ExtId "mbjbjjnaihiegbpjdjoflfmehppobbod"
+#define StoreId "ifcbhfjmblebbinhgjhfmjgnkmoneifg"
 
 [Setup]
 AppId={{7E1B2C3D-4F5A-6B7C-8D9E-A0B1C2D3E4F5}
@@ -83,7 +84,7 @@ begin
       '  "description": "Hovpn native host",' + #13#10 +
       '  "path": "' + JsonEscape(BatPath) + '",' + #13#10 +
       '  "type": "stdio",' + #13#10 +
-      '  "allowed_origins": ["chrome-extension://{#ExtId}/"]' + #13#10 +
+      '  "allowed_origins": ["chrome-extension://{#StoreId}/", "chrome-extension://{#ExtId}/"]' + #13#10 +
       '}' + #13#10;
     SaveStringToFile(JsonPath, Json, False);
   end;
