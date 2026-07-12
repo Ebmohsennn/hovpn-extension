@@ -1,28 +1,19 @@
 #!/bin/bash
-# Hovpn macOS installer — postinstall (runs as ROOT: system-domain pkg).
-# Installs the helper into the logged-in user's home and writes a Chrome
-# managed policy so the Hovpn extension force-installs from hovpn.vip — no
-# Chrome Web Store required.
+# Hovpn macOS installer — postinstall.
+# Current-user-home install (no admin): sets up the local engine and registers
+# the native messaging host. The Hovpn extension is installed separately from
+# the Chrome Web Store; this just provides the engine it talks to.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# Trust both Hovpn extension identities: the Chrome Web Store build, and the
-# self-hosted CRX id used by the all-in-one force-install path.
-EXT_ID="mbjbjjnaihiegbpjdjoflfmehppobbod"   # self-hosted CRX id (force-install)
-STORE_ID="ifcbhfjmblebbinhgjhfmjgnkmoneifg" # Chrome Web Store id
-UPDATE_URL="https://hovpn.vip/updates.xml"
+HOVPN_DIR="$HOME/.hovpn"
+# Trust both Hovpn extension identities: the Chrome Web Store build and the
+# self-hosted CRX build.
+STORE_ID="ifcbhfjmblebbinhgjhfmjgnkmoneifg"
+CRX_ID="mbjbjjnaihiegbpjdjoflfmehppobbod"
 
-# Running as root, so $HOME is root's — find the real console user + home.
-CONSOLE_USER="$(stat -f%Su /dev/console 2>/dev/null || true)"
-if [ -z "$CONSOLE_USER" ] || [ "$CONSOLE_USER" = "root" ]; then
-  CONSOLE_USER="$(ls -l /dev/console 2>/dev/null | awk '{print $3}')"
-fi
-USER_HOME="$(dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory 2>/dev/null | awk '{print $2}')"
-[ -z "$USER_HOME" ] && USER_HOME="/Users/$CONSOLE_USER"
-HOVPN_DIR="$USER_HOME/.hovpn"
-
-# --- install the helper into the user's home ---
 mkdir -p "$HOVPN_DIR/bin"
+
 # sysctl hw.optional.arm64 reports TRUE hardware even under Rosetta translation
 # (uname -m would lie), so the right binaries get installed on Apple Silicon.
 if [ "$(sysctl -n hw.optional.arm64 2>/dev/null)" = "1" ]; then
@@ -35,50 +26,33 @@ fi
 chmod +x "$HOVPN_DIR/bin/node" "$HOVPN_DIR/bin/xray"
 
 cp "$SCRIPT_DIR/hovpn-host.js" "$HOVPN_DIR/hovpn-host.js"
+
 cat > "$HOVPN_DIR/hovpn-host" <<LAUNCHER
 #!/bin/bash
 exec "$HOVPN_DIR/bin/node" "$HOVPN_DIR/hovpn-host.js"
 LAUNCHER
 chmod +x "$HOVPN_DIR/hovpn-host"
 
-# --- register the native messaging host for each Chromium-family browser ---
 MANIFEST_JSON=$(cat <<JSON
 {
   "name": "com.hovpn.host",
   "description": "Hovpn native host — manages a local xray-core process",
   "path": "$HOVPN_DIR/hovpn-host",
   "type": "stdio",
-  "allowed_origins": ["chrome-extension://$STORE_ID/", "chrome-extension://$EXT_ID/"]
+  "allowed_origins": ["chrome-extension://$STORE_ID/", "chrome-extension://$CRX_ID/"]
 }
 JSON
 )
+
 for BROWSER_DIR in \
   "Google/Chrome" \
   "Chromium" \
   "Microsoft Edge" \
   "BraveSoftware/Brave-Browser"
 do
-  TARGET="$USER_HOME/Library/Application Support/$BROWSER_DIR/NativeMessagingHosts"
+  TARGET="$HOME/Library/Application Support/$BROWSER_DIR/NativeMessagingHosts"
   mkdir -p "$TARGET"
   printf '%s' "$MANIFEST_JSON" > "$TARGET/com.hovpn.host.json"
-done
-
-# --- force-install the extension via managed policy (root writes /Library) ---
-mkdir -p "/Library/Managed Preferences"
-for DOMAIN in com.google.Chrome com.microsoft.Edge com.brave.Browser; do
-  PLIST="/Library/Managed Preferences/$DOMAIN"
-  # set the force-install list to our extension + self-hosted update URL
-  defaults write "$PLIST" ExtensionInstallForcelist -array "$EXT_ID;$UPDATE_URL" 2>/dev/null || true
-  chmod 644 "$PLIST.plist" 2>/dev/null || true
-done
-# nudge cfprefsd so the browsers see the new policy without a reboot
-killall cfprefsd 2>/dev/null || true
-
-# --- hand everything in the user's home back to the user ---
-chown -R "$CONSOLE_USER" "$HOVPN_DIR" 2>/dev/null || true
-for BROWSER_DIR in "Google/Chrome" "Chromium" "Microsoft Edge" "BraveSoftware/Brave-Browser"; do
-  F="$USER_HOME/Library/Application Support/$BROWSER_DIR/NativeMessagingHosts/com.hovpn.host.json"
-  [ -f "$F" ] && chown "$CONSOLE_USER" "$F" 2>/dev/null || true
 done
 
 exit 0

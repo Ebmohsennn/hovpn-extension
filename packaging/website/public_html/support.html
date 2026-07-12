@@ -27,14 +27,16 @@
 
   <h2>Installing Hovpn</h2>
   <div class="steps">
-    <div class="step"><div><h3>Download &amp; run the installer</h3><p>One installer sets up both the Hovpn browser extension and the local connection engine. No Chrome Web Store needed.</p>
+    <div class="step"><div><h3>Add the extension</h3><p>Add Hovpn to your browser from the Chrome Web Store. It works in Chrome, Edge, Brave and Chromium.</p>
+      <p style="margin-top:10px"><a class="btn ghost" href="https://chromewebstore.google.com/detail/ifcbhfjmblebbinhgjhfmjgnkmoneifg" rel="noopener">Add to Chrome</a></p></div></div>
+    <div class="step"><div><h3>Install the helper</h3><p>Download the helper for your system and run it once — it bundles everything, no admin needed.</p>
       <p style="margin-top:10px"><a class="btn ghost" href="/download/Hovpn-macos.pkg">macOS</a> <a class="btn ghost" href="/download/Hovpn-Setup.exe">Windows</a></p></div></div>
-    <div class="step"><div><h3>Restart your browser</h3><p>Fully quit and reopen your browser. The Hovpn extension appears automatically.</p></div></div>
+    <div class="step"><div><h3>Restart your browser</h3><p>Fully quit and reopen your browser so it detects the helper.</p></div></div>
     <div class="step"><div><h3>Connect</h3><p>Click the Hovpn icon, add a server (paste a config link) or a subscription URL, and press the big button.</p></div></div>
   </div>
 
-  <h2>How does it work?</h2>
-  <p>For security, web browsers can't run a proxy engine on their own. The Hovpn installer sets up a tiny local engine on your computer and the browser extension that controls it — together they route only your browser's traffic. On macOS the installer asks for your password once (to register the extension); on Windows no admin is needed. You can remove everything at any time from the installer/uninstaller.</p>
+  <h2>Why do I need the helper?</h2>
+  <p>For security, web browsers can't run a proxy engine on their own. The Hovpn helper is a tiny local app that runs the actual connection on your computer; the extension is just the interface that controls it. It installs only into your own user folder — no admin, and you can remove it anytime.</p>
 
   <h2>Frequently asked questions</h2>
   <details><summary>Does Hovpn provide servers?</summary><p>No. Hovpn is the software you use to connect to <em>your own</em> server or subscription. You bring the config link or subscription URL from your provider.</p></details>
