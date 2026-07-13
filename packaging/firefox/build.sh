@@ -24,7 +24,14 @@ const m = JSON.parse(fs.readFileSync(p, "utf8"));
 delete m.key;                                   // Chrome-only
 m.background = { scripts: ["background.js"] };   // Firefox = event page
 m.browser_specific_settings = {
-  gecko: { id: process.env.FIREFOX_ID, strict_min_version: "121.0" }
+  gecko: {
+    id: process.env.FIREFOX_ID,
+    strict_min_version: "121.0",
+    // Hovpn has no accounts, telemetry, or analytics — Mozilla requires this
+    // disclosure as of Nov 2025 (mandatory for all extensions from H1 2026).
+    // https://extensionworkshop.com/documentation/develop/firefox-builtin-data-consent/
+    data_collection_permissions: { required: ["none"] }
+  }
 };
 m.description = "Hovpn — secure, elegant proxy for Firefox. Import your config or subscription and route only the browser’s traffic.";
 fs.writeFileSync(p, JSON.stringify(m, null, 2) + "\n");
