@@ -44,3 +44,7 @@ keys/hovpn-private-key.pem
 
 # Signed extension package (rebuildable)
 *.crx
+
+# Firefox build artifacts
+packaging/firefox/build/
+packaging/firefox/*.zip

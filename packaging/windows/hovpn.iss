@@ -8,6 +8,7 @@
 #define AppVersion "1.0.0"
 #define ExtId "mbjbjjnaihiegbpjdjoflfmehppobbod"
 #define StoreId "ifcbhfjmblebbinhgjhfmjgnkmoneifg"
+#define FirefoxId "hovpn@hovpn.vip"
 
 [Setup]
 AppId={{7E1B2C3D-4F5A-6B7C-8D9E-A0B1C2D3E4F5}
@@ -41,6 +42,8 @@ Root: HKCU; Subkey: "Software\Google\Chrome\NativeMessagingHosts\com.hovpn.host"
 Root: HKCU; Subkey: "Software\Microsoft\Edge\NativeMessagingHosts\com.hovpn.host"; ValueType: string; ValueName: ""; ValueData: "{app}\com.hovpn.host.json"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\BraveSoftware\Brave-Browser\NativeMessagingHosts\com.hovpn.host"; ValueType: string; ValueName: ""; ValueData: "{app}\com.hovpn.host.json"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\Chromium\NativeMessagingHosts\com.hovpn.host"; ValueType: string; ValueName: ""; ValueData: "{app}\com.hovpn.host.json"; Flags: uninsdeletekey
+; Firefox: separate hive + its own manifest (allowed_extensions).
+Root: HKCU; Subkey: "Software\Mozilla\NativeMessagingHosts\com.hovpn.host"; ValueType: string; ValueName: ""; ValueData: "{app}\com.hovpn.host.firefox.json"; Flags: uninsdeletekey
 ; Note: no ExtensionInstallForcelist here. The HKCU\Software\Policies branch is
 ; ACL-restricted to administrators, so writing it fails without elevation. The
 ; extension is installed from the Chrome Web Store; this installer only sets up
@@ -49,6 +52,7 @@ Root: HKCU; Subkey: "Software\Chromium\NativeMessagingHosts\com.hovpn.host"; Val
 [UninstallDelete]
 Type: files; Name: "{app}\hovpn-host.bat"
 Type: files; Name: "{app}\com.hovpn.host.json"
+Type: files; Name: "{app}\com.hovpn.host.firefox.json"
 Type: files; Name: "{app}\xray-config.json"
 Type: files; Name: "{app}\xray.log"
 Type: files; Name: "{app}\state.json"
@@ -74,7 +78,7 @@ begin
            '"' + AppDir + '\bin\node.exe" "' + AppDir + '\hovpn-host.js" %*' + #13#10;
     SaveStringToFile(BatPath, Bat, False);
 
-    { Native messaging manifest. Windows paths need backslashes escaped in JSON. }
+    { Chromium native messaging manifest. Windows paths need backslashes escaped in JSON. }
     JsonPath := AppDir + '\com.hovpn.host.json';
     Json := '{' + #13#10 +
       '  "name": "com.hovpn.host",' + #13#10 +
@@ -82,6 +86,17 @@ begin
       '  "path": "' + JsonEscape(BatPath) + '",' + #13#10 +
       '  "type": "stdio",' + #13#10 +
       '  "allowed_origins": ["chrome-extension://{#StoreId}/", "chrome-extension://{#ExtId}/"]' + #13#10 +
+      '}' + #13#10;
+    SaveStringToFile(JsonPath, Json, False);
+
+    { Firefox native messaging manifest — uses allowed_extensions. }
+    JsonPath := AppDir + '\com.hovpn.host.firefox.json';
+    Json := '{' + #13#10 +
+      '  "name": "com.hovpn.host",' + #13#10 +
+      '  "description": "Hovpn native host",' + #13#10 +
+      '  "path": "' + JsonEscape(BatPath) + '",' + #13#10 +
+      '  "type": "stdio",' + #13#10 +
+      '  "allowed_extensions": ["{#FirefoxId}"]' + #13#10 +
       '}' + #13#10;
     SaveStringToFile(JsonPath, Json, False);
   end;
