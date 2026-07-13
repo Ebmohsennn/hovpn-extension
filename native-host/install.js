@@ -30,6 +30,9 @@ const DEFAULT_EXTENSION_ID = 'mbjbjjnaihiegbpjdjoflfmehppobbod';
 // Also trust the Chrome Web Store build of Hovpn (different id than the
 // self-hosted CRX), so the store extension can reach the same native host.
 const STORE_EXTENSION_ID = 'ifcbhfjmblebbinhgjhfmjgnkmoneifg';
+// Firefox add-on id (browser_specific_settings.gecko.id). Firefox native-host
+// manifests use `allowed_extensions` with this id, not chrome-extension URLs.
+const FIREFOX_ID = 'hovpn@hovpn.vip';
 
 const STATE_DIR = path.join(IS_WIN ? (process.env.LOCALAPPDATA || HOME) : HOME, IS_WIN ? 'Hovpn' : '.hovpn');
 const BIN_DIR = path.join(STATE_DIR, 'bin');
@@ -70,6 +73,25 @@ function manifest(extId, launcherPath) {
   };
 }
 
+// Firefox native-host manifest: same host, but keyed by add-on id.
+function firefoxManifest(launcherPath) {
+  return {
+    name: HOST_NAME,
+    description: 'Hovpn native host — manages a local xray-core process',
+    path: launcherPath,
+    type: 'stdio',
+    allowed_extensions: [FIREFOX_ID]
+  };
+}
+
+// Firefox's native-messaging-hosts directory (macOS/Linux).
+function firefoxManifestDir() {
+  if (process.platform === 'darwin') {
+    return path.join(HOME, 'Library', 'Application Support', 'Mozilla', 'NativeMessagingHosts');
+  }
+  return path.join(HOME, '.mozilla', 'native-messaging-hosts');
+}
+
 // Per-OS, per-browser NativeMessagingHosts directories (macOS/Linux).
 function browserManifestDirs() {
   if (process.platform === 'darwin') {
@@ -99,7 +121,7 @@ const WIN_REG_KEYS = [
   ['Chromium', `HKCU\\Software\\Chromium\\NativeMessagingHosts\\${HOST_NAME}`]
 ];
 
-function registerPosix(manifestObj) {
+function registerPosix(manifestObj, firefoxObj) {
   const written = [];
   for (const { label, dir } of browserManifestDirs()) {
     try {
@@ -108,21 +130,35 @@ function registerPosix(manifestObj) {
       written.push(label);
     } catch { /* browser not present / not writable — skip */ }
   }
+  try {
+    const fdir = firefoxManifestDir();
+    fs.mkdirSync(fdir, { recursive: true });
+    fs.writeFileSync(path.join(fdir, `${HOST_NAME}.json`), JSON.stringify(firefoxObj, null, 2));
+    written.push('Firefox');
+  } catch { /* skip */ }
   return written;
 }
 
-function registerWindows(manifestObj) {
+function registerWindows(manifestObj, firefoxObj) {
   // On Windows the manifest lives at a fixed path and each browser's registry
-  // key points to it.
+  // key points to it. Firefox uses its own manifest (allowed_extensions) and
+  // its own registry hive.
+  const written = [];
   const manifestPath = path.join(STATE_DIR, `${HOST_NAME}.json`);
   fs.writeFileSync(manifestPath, JSON.stringify(manifestObj, null, 2));
-  const written = [];
   for (const [label, key] of WIN_REG_KEYS) {
     try {
       execFileSync('reg', ['add', key, '/ve', '/t', 'REG_SZ', '/d', manifestPath, '/f'], { windowsHide: true });
       written.push(label);
     } catch { /* skip */ }
   }
+  const ffPath = path.join(STATE_DIR, `${HOST_NAME}.firefox.json`);
+  fs.writeFileSync(ffPath, JSON.stringify(firefoxObj, null, 2));
+  try {
+    execFileSync('reg', ['add', `HKCU\\Software\\Mozilla\\NativeMessagingHosts\\${HOST_NAME}`,
+      '/ve', '/t', 'REG_SZ', '/d', ffPath, '/f'], { windowsHide: true });
+    written.push('Firefox');
+  } catch { /* skip */ }
   return written;
 }
 
@@ -151,7 +187,8 @@ function main() {
 
   const launcher = writeLauncher();
   const m = manifest(extId, launcher);
-  const written = IS_WIN ? registerWindows(m) : registerPosix(m);
+  const ff = firefoxManifest(launcher);
+  const written = IS_WIN ? registerWindows(m, ff) : registerPosix(m, ff);
 
   console.log(`\n✓ Native host registered for: ${written.length ? written.join(', ') : '(no browsers detected — dirs created anyway)'}`);
   console.log(`✓ Launcher: ${launcher}`);

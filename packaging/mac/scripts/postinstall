@@ -11,6 +11,7 @@ HOVPN_DIR="$HOME/.hovpn"
 # self-hosted CRX build.
 STORE_ID="ifcbhfjmblebbinhgjhfmjgnkmoneifg"
 CRX_ID="mbjbjjnaihiegbpjdjoflfmehppobbod"
+FIREFOX_ID="hovpn@hovpn.vip"
 
 mkdir -p "$HOVPN_DIR/bin"
 
@@ -54,5 +55,20 @@ do
   mkdir -p "$TARGET"
   printf '%s' "$MANIFEST_JSON" > "$TARGET/com.hovpn.host.json"
 done
+
+# Firefox uses a different manifest (allowed_extensions) in its own directory.
+FIREFOX_JSON=$(cat <<JSON
+{
+  "name": "com.hovpn.host",
+  "description": "Hovpn native host — manages a local xray-core process",
+  "path": "$HOVPN_DIR/hovpn-host",
+  "type": "stdio",
+  "allowed_extensions": ["$FIREFOX_ID"]
+}
+JSON
+)
+FF_TARGET="$HOME/Library/Application Support/Mozilla/NativeMessagingHosts"
+mkdir -p "$FF_TARGET"
+printf '%s' "$FIREFOX_JSON" > "$FF_TARGET/com.hovpn.host.json"
 
 exit 0

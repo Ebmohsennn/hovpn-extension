@@ -8,6 +8,10 @@
 const NATIVE_HOST = 'com.hovpn.host';
 const HEALTHCHECK_ALARM = 'v2ray-healthcheck';
 
+// Firefox and Chrome share this code but differ in the proxy API. Detect the
+// engine reliably from the extension URL scheme.
+const IS_FIREFOX = chrome.runtime.getURL('/').startsWith('moz-extension://');
+
 async function getSettings() {
   const { socksPort = 1080, bypassList = 'localhost,127.0.0.1' } =
     await chrome.storage.sync.get(['socksPort', 'bypassList']);
@@ -18,6 +22,20 @@ async function getSettings() {
 }
 
 async function setProxy(socksPort, bypassList) {
+  if (IS_FIREFOX) {
+    // Firefox proxy.settings uses a different schema (no fixed_servers/rules).
+    // proxyDNS routes DNS through the SOCKS proxy to avoid leaks.
+    await chrome.proxy.settings.set({
+      value: {
+        proxyType: 'manual',
+        socks: `127.0.0.1:${socksPort}`,
+        socksVersion: 5,
+        proxyDNS: true,
+        passthrough: bypassList.join(', ')
+      }
+    });
+    return;
+  }
   await chrome.proxy.settings.set({
     value: {
       mode: 'fixed_servers',
@@ -31,6 +49,10 @@ async function setProxy(socksPort, bypassList) {
 }
 
 async function clearProxy() {
+  if (IS_FIREFOX) {
+    await chrome.proxy.settings.clear({});
+    return;
+  }
   await chrome.proxy.settings.clear({ scope: 'regular' });
 }
 
