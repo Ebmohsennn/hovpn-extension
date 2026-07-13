@@ -34,9 +34,10 @@ const subUrl = el('subUrl');
 const fetchSubBtn = el('fetchSub');
 
 // --- orb icons ---
-// AMO's linter (and general good practice) flags any `.innerHTML =` assignment
-// as unsafe, even for hardcoded static markup like these icons. Parse SVG
-// strings into real DOM nodes instead, and swap them in with replaceChildren.
+// Direct HTML-string injection is flagged as unsafe by AMO's validator (and is
+// generally bad practice) even for hardcoded static markup like these icons.
+// Parse SVG strings into real DOM nodes instead, and swap them in with
+// replaceChildren.
 function svgIcon(svgMarkup) {
   return new DOMParser().parseFromString(svgMarkup, 'image/svg+xml').documentElement;
 }
