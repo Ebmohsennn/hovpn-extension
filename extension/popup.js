@@ -34,9 +34,19 @@ const subUrl = el('subUrl');
 const fetchSubBtn = el('fetchSub');
 
 // --- orb icons ---
+// AMO's linter (and general good practice) flags any `.innerHTML =` assignment
+// as unsafe, even for hardcoded static markup like these icons. Parse SVG
+// strings into real DOM nodes instead, and swap them in with replaceChildren.
+function svgIcon(svgMarkup) {
+  return new DOMParser().parseFromString(svgMarkup, 'image/svg+xml').documentElement;
+}
+
 const ICON_POWER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg>';
 const ICON_SHIELD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5.5c0 4.3-3 7.4-7 8.5-4-1.1-7-4.2-7-8.5V6z"/><path d="M9 12l2 2 4-4"/></svg>';
 const ICON_SPINNER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9" opacity="0.9"/></svg>';
+const ICON_STAR_ON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>';
+const ICON_STAR_OFF = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>';
+const ICON_EDIT = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
 
 // --- theme ---
 (async () => {
@@ -178,7 +188,7 @@ function signalEl(ms, { testing = false, showMs = true } = {}) {
 
 // --- hero state machine ---
 function setOrbIcon(kind) {
-  orbIconEl.innerHTML = kind === 'on' ? ICON_SHIELD : kind === 'connecting' ? ICON_SPINNER : ICON_POWER;
+  orbIconEl.replaceChildren(svgIcon(kind === 'on' ? ICON_SHIELD : kind === 'connecting' ? ICON_SPINNER : ICON_POWER));
 }
 
 function setHeroConnecting(name) {
@@ -205,7 +215,7 @@ function renderHero(state) {
     // connection detail: protocol chip + signal + live timer
     connProto.className = 'chip' + (state.protocol ? ` proto-${state.protocol}` : '');
     connProto.textContent = { vless: 'VLESS', vmess: 'VMESS', trojan: 'TROJAN', shadowsocks: 'SS' }[state.protocol] || '';
-    connSignal.innerHTML = '';
+    connSignal.replaceChildren();
     connSignal.appendChild(signalEl(latencies[state.activeProfileId], { showMs: true }));
     connDetail.classList.remove('hidden');
 
@@ -418,9 +428,7 @@ function rowEl(profile, state) {
   star.type = 'button';
   star.className = 'star' + (profile.favorite ? ' on' : '');
   star.title = profile.favorite ? 'Unfavorite' : 'Favorite';
-  star.innerHTML = profile.favorite
-    ? '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>'
-    : '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z"/></svg>';
+  star.replaceChildren(svgIcon(profile.favorite ? ICON_STAR_ON : ICON_STAR_OFF));
   star.addEventListener('click', async (e) => {
     e.stopPropagation();
     const profiles = await getProfiles();
@@ -457,7 +465,7 @@ function rowEl(profile, state) {
   edit.type = 'button';
   edit.className = 'row-edit';
   edit.title = 'Rename / edit';
-  edit.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+  edit.replaceChildren(svgIcon(ICON_EDIT));
   edit.addEventListener('click', (e) => { e.stopPropagation(); openServerEdit(profile); });
   meta.appendChild(edit);
 
@@ -508,7 +516,7 @@ function sectionHeadEl(title, count) {
   const h = document.createElement('div');
   h.className = 'section-head';
   const ico = document.createElement('span');
-  ico.className = 'section-ico'; ico.innerHTML = ICO_PIN;
+  ico.className = 'section-ico'; ico.replaceChildren(svgIcon(ICO_PIN));
   const t = document.createElement('span');
   t.className = 'section-title'; t.textContent = title;
   const c = document.createElement('span');
@@ -524,7 +532,7 @@ function subHeaderEl(url, members) {
   h.className = 'section-head';
 
   const ico = document.createElement('span');
-  ico.className = 'section-ico'; ico.innerHTML = ICO_RSS;
+  ico.className = 'section-ico'; ico.replaceChildren(svgIcon(ICO_RSS));
   const lab = document.createElement('span');
   lab.className = 'section-title'; lab.textContent = label; lab.title = url;
   const c = document.createElement('span');
@@ -586,12 +594,20 @@ async function renderList(profiles = cachedProfiles, state = cachedState) {
   const query = searchEl.value.trim().toLowerCase();
   const sortBy = sortByEl.value;
 
-  listEl.innerHTML = '';
+  listEl.replaceChildren();
   if (profiles.length === 0) {
     listControlsEl.classList.add('hidden');
     const empty = document.createElement('div');
     empty.className = 'profile-empty';
-    empty.innerHTML = '<span class="big">🛰️</span>No servers yet.<br>Add one below to get started.';
+    const big = document.createElement('span');
+    big.className = 'big';
+    big.textContent = '🛰️';
+    empty.append(
+      big,
+      document.createTextNode('No servers yet.'),
+      document.createElement('br'),
+      document.createTextNode('Add one below to get started.')
+    );
     listEl.appendChild(empty);
     return;
   }
