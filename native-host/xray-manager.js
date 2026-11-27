@@ -35,8 +35,22 @@ const XRAY_CANDIDATES = IS_WIN
   ? [path.join(BIN_DIR, XRAY_EXE), 'xray.exe', 'xray']
   : [path.join(BIN_DIR, XRAY_EXE), 'xray', '/opt/homebrew/bin/xray', '/usr/local/bin/xray', '/usr/bin/xray'];
 
+// Everything in STATE_DIR is private to the user: the config holds the server
+// credentials (UUID / password) and the log can name the servers you use.
 function ensureDir() {
-  fs.mkdirSync(STATE_DIR, { recursive: true });
+  fs.mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 });
+  if (!IS_WIN) {
+    try { fs.chmodSync(STATE_DIR, 0o700); } catch { /* not ours to change */ }
+  }
+}
+
+// writeFileSync's `mode` only applies when the file is created, so tighten
+// files left behind by older versions too.
+function writePrivate(file, data) {
+  fs.writeFileSync(file, data, { mode: 0o600 });
+  if (!IS_WIN) {
+    try { fs.chmodSync(file, 0o600); } catch { /* best effort */ }
+  }
 }
 
 function readState() {
@@ -49,7 +63,7 @@ function readState() {
 
 function writeState(state) {
   ensureDir();
-  fs.writeFileSync(STATE_FILE, JSON.stringify(state));
+  writePrivate(STATE_FILE, JSON.stringify(state));
 }
 
 function clearState() {
@@ -57,6 +71,9 @@ function clearState() {
 }
 
 function isAlive(pid) {
+  // The pid comes from a file on disk: never signal 0, 1 or a negative pid
+  // (those address whole process groups or init).
+  if (!Number.isInteger(pid) || pid <= 1) return false;
   try {
     process.kill(pid, 0);
     return true;
@@ -85,7 +102,9 @@ function stopExisting() {
 
 function buildXrayConfig(outbound, socksPort) {
   return {
-    log: { loglevel: 'warning' },
+    // access: 'none' — xray's access log would otherwise record every host
+    // you visit (it defaults to stdout, which is redirected to xray.log).
+    log: { loglevel: 'warning', access: 'none' },
     inbounds: [{
       listen: '127.0.0.1',
       port: socksPort,
@@ -136,12 +155,35 @@ function trySpawn(bin, args, outFd) {
   });
 }
 
+const ALLOWED_PROTOCOLS = new Set(['vmess', 'vless', 'trojan', 'shadowsocks']);
+
+function isPlainObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v);
+}
+
 async function handleStart(config, socksPort) {
+  // Only the extension can reach this host, but validate anyway: the outbound
+  // is written straight into the xray config.
+  if (!isPlainObject(config) || !ALLOWED_PROTOCOLS.has(config.protocol)) {
+    return { ok: false, error: 'Unsupported or missing protocol in the server profile.' };
+  }
+  if (!isPlainObject(config.settings) || (config.streamSettings !== undefined && !isPlainObject(config.streamSettings))) {
+    return { ok: false, error: 'Malformed server profile.' };
+  }
+  if (!Number.isInteger(socksPort) || socksPort < 1 || socksPort > 65535) {
+    return { ok: false, error: 'SOCKS port must be a whole number between 1 and 65535 — check the extension options.' };
+  }
+
   stopExisting();
   ensureDir();
   const xrayConfig = buildXrayConfig(config, socksPort);
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify(xrayConfig, null, 2));
-  const outFd = fs.openSync(LOG_FILE, 'a');
+  writePrivate(CONFIG_FILE, JSON.stringify(xrayConfig, null, 2));
+  // Truncate on every start: the log is for diagnosing the current session,
+  // not a history. Also drops any access log an older version wrote.
+  const outFd = fs.openSync(LOG_FILE, 'w', 0o600);
+  if (!IS_WIN) {
+    try { fs.fchmodSync(outFd, 0o600); } catch { /* best effort */ }
+  }
 
   for (const bin of XRAY_CANDIDATES) {
     const res = await trySpawn(bin, ['run', '-c', CONFIG_FILE], outFd);
@@ -160,6 +202,8 @@ async function handleStart(config, socksPort) {
 
 function handleStop() {
   stopExisting();
+  // The config holds the server credentials; don't leave it on disk while disconnected.
+  try { fs.unlinkSync(CONFIG_FILE); } catch { /* already gone */ }
   return { ok: true };
 }
 
@@ -192,16 +236,43 @@ function decodeSubscriptionBody(body) {
   }
 }
 
+// Chrome rejects native-messaging replies over 1 MB, and no real subscription
+// is anywhere near that, so refuse to buffer more.
+const MAX_SUBSCRIPTION_BYTES = 768 * 1024;
+
+async function readCapped(res, limit) {
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of res.body) {
+    total += chunk.length;
+    if (total > limit) return null;
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
+
 async function handleFetchSubscription(url) {
+  let parsed;
+  try { parsed = new URL(String(url)); } catch { return { ok: false, error: 'Subscription URL is not a valid URL.' }; }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return { ok: false, error: 'Subscription URL must start with http:// or https://' };
+  }
+
   let res;
   try {
-    res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(10000) });
+    res = await fetch(parsed, { redirect: 'follow', signal: AbortSignal.timeout(10000) });
   } catch (e) {
     return { ok: false, error: 'Failed to fetch subscription: ' + e.message };
   }
   if (!res.ok) return { ok: false, error: `Subscription URL returned HTTP ${res.status}` };
 
-  const body = await res.text();
+  let body;
+  try {
+    body = await readCapped(res, MAX_SUBSCRIPTION_BYTES);
+  } catch (e) {
+    return { ok: false, error: 'Failed to read subscription: ' + e.message };
+  }
+  if (body === null) return { ok: false, error: 'Subscription is too large (over 768 KB).' };
   const decoded = decodeSubscriptionBody(body);
   if (!decoded.ok) return decoded;
 
@@ -252,7 +323,8 @@ function tcpConnectTime(address, port, timeoutMs) {
 async function handlePing(targets) {
   // Each probe is independently guarded so one bad target can never reject
   // the batch — worst case that target resolves to null (shown as a timeout).
-  const results = await Promise.all((targets || []).map(async (t) => {
+  const list = Array.isArray(targets) ? targets.filter(isPlainObject).slice(0, 500) : [];
+  const results = await Promise.all(list.map(async (t) => {
     let ms = null;
     try {
       ms = await tcpConnectTime(t.address, t.port, 3000);
@@ -276,6 +348,7 @@ function reply(obj) {
 async function handleMessage(msg) {
   let res;
   try {
+    if (!isPlainObject(msg)) throw new Error('malformed message');
     if (msg.cmd === 'start') res = await handleStart(msg.config, msg.socksPort);
     else if (msg.cmd === 'stop') res = handleStop();
     else if (msg.cmd === 'status') res = handleStatus();
@@ -295,7 +368,8 @@ process.stdin.on('data', (chunk) => {
   while (buf.length >= 4) {
     const len = buf.readUInt32LE(0);
     if (buf.length < 4 + len) break;
-    const msg = JSON.parse(buf.slice(4, 4 + len).toString('utf8'));
+    let msg = null;
+    try { msg = JSON.parse(buf.slice(4, 4 + len).toString('utf8')); } catch { /* handled as malformed */ }
     buf = buf.slice(4 + len);
     handling = true;
     handleMessage(msg); // exits via reply()'s write callback once done

@@ -21,7 +21,23 @@ async function getSettings() {
   };
 }
 
+// WebRTC can send UDP outside a SOCKS proxy and reveal the real IP address to
+// any page. While connected, restrict it to proxied routes. chrome.privacy only
+// exists when the manifest lists the "privacy" permission; without it this is
+// a no-op, so adding the permission is all it takes to switch the guard on.
+async function setWebRtcGuard(on) {
+  const policy = chrome.privacy && chrome.privacy.network && chrome.privacy.network.webRTCIPHandlingPolicy;
+  if (!policy) return;
+  try {
+    if (on) await policy.set({ value: 'disable_non_proxied_udp' });
+    else await policy.clear({});
+  } catch {
+    // another extension or an enterprise policy controls the setting
+  }
+}
+
 async function setProxy(socksPort, bypassList) {
+  await setWebRtcGuard(true);
   if (IS_FIREFOX) {
     // Firefox proxy.settings uses a different schema (no fixed_servers/rules).
     // proxyDNS routes DNS through the SOCKS proxy to avoid leaks.
@@ -49,6 +65,7 @@ async function setProxy(socksPort, bypassList) {
 }
 
 async function clearProxy() {
+  await setWebRtcGuard(false);
   if (IS_FIREFOX) {
     await chrome.proxy.settings.clear({});
     return;
@@ -229,14 +246,20 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         await updateToolbar('on', msg.outbound.remark || msg.outbound.address);
         sendResponse({ ok: true });
       } else if (msg.action === 'disconnect') {
-        await sendNative({ cmd: 'stop' });
+        // Always release the proxy, even when the helper can't be reached
+        // (uninstalled, Node moved): otherwise the browser stays pointed at a
+        // dead SOCKS port with no way to clear it from the UI.
+        let stopError = null;
+        try { await sendNative({ cmd: 'stop' }); } catch (e) { stopError = e.message; }
         await clearProxy();
         await chrome.storage.local.set({
           connected: false, activeProfileId: null, activeOutbound: null,
           connectedAt: null, wasRunningInBackground: false
         });
         await updateToolbar('off');
-        sendResponse({ ok: true });
+        sendResponse(stopError
+          ? { ok: true, warning: 'Proxy cleared, but the helper could not be reached to stop xray: ' + stopError }
+          : { ok: true });
       } else if (msg.action === 'getStatus') {
         const result = await reconcile();
         sendResponse(result);
