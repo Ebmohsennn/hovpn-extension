@@ -192,6 +192,13 @@ tick, so a persistently broken connection doesn't spam you.
 - This stays a Chrome-only proxy by design, not a system VPN — no kill
   switch, no mobile app, no traffic-shaping/ad-block claims. Those aren't on
   the roadmap here; they're a different architecture entirely.
+- WebRTC is not restricted yet: a page that uses WebRTC (calls, some
+  "what is my IP" checks) can send UDP outside the proxy and see your real
+  address. The code that restricts it is in `extension/background.js` and
+  switches on once the `privacy` permission is added to the manifest; until
+  then, disable WebRTC or use a WebRTC-limiting extension if this matters to you.
+- The helper pins one xray-core release and verifies its checksum, so it does
+  not follow upstream automatically; a new Hovpn release raises the pin.
 
 ## What's been tested
 

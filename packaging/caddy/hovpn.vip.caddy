@@ -7,6 +7,8 @@
 #  instead of being caught by the automatic HTTP->HTTPS redirect.
 # ═══════════════════════════════════════════════════════════════════════════════
 http://hovpn.vip {
+	# Replace ORIGIN_IP with the server's own address when deploying. Keep the real
+	# address out of this repository, and firewall this listener to the CDN's ranges.
 	bind {$ORIGIN_IP} 127.0.0.1
 
 	encode zstd gzip
@@ -26,6 +28,10 @@ http://hovpn.vip {
 	header {
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
+		# The site is static: no scripts, forms, frames or third-party resources.
+		Content-Security-Policy "default-src 'none'; img-src 'self'; style-src 'self' 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
 		-Server
 	}
 	# force downloads for helper installers

@@ -23,7 +23,7 @@
 
 <main class="wrap content">
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 8 July 2026</p>
+  <p class="updated">Last updated: 27 November 2026</p>
 
   <p>Hovpn is a browser proxy client operated by Mohsen (<a href="https://ebmohsen.com">ebmohsen.com</a>) under the Hovpn brand. This policy explains exactly what Hovpn does and does not do with your data.</p>
 
@@ -33,15 +33,16 @@
   <h2>Data stored on your device only</h2>
   <ul>
     <li>The server profiles and subscription URLs you add are stored locally in your browser on your own machine. They are never transmitted to us.</li>
-    <li>Your settings (proxy port, bypass list, theme) are stored locally.</li>
-    <li>The local helper writes a runtime configuration and log file under your own user folder (<code>~/.hovpn</code> on macOS/Linux, <code>%LOCALAPPDATA%\Hovpn</code> on Windows).</li>
+    <li>Your settings (proxy port, bypass list, theme) are kept in the browser's synced extension storage: if you have turned on browser sync, your browser vendor copies these three settings to your other devices. Server profiles and subscription URLs are not synced.</li>
+    <li>The local helper writes a runtime configuration and a diagnostic log under your own user folder (<code>~/.hovpn</code> on macOS/Linux, <code>%LOCALAPPDATA%\Hovpn</code> on Windows), readable only by your user account. The configuration, which holds your server's credentials, is removed when you disconnect. The log holds the proxy engine's start-up messages and errors and is cleared on every connect. Access logging is switched off, so it keeps no record of the sites you visit; an error line can still name a host that failed to connect.</li>
   </ul>
 
   <h2>Network connections Hovpn makes</h2>
   <ul>
     <li><strong>To your proxy server(s)</strong>, as configured by you — this is the core function.</li>
     <li><strong>To your subscription URL</strong>, when you add or refresh a subscription, to download your own server list. This request is made by the local helper.</li>
-    <li><strong>To GitHub / nodejs.org</strong>, only during installation of the helper, to download the proxy engine and runtime.</li>
+    <li><strong>To each server in your list</strong>, a bare TCP connection when you open the popup, to measure latency. These go directly from your computer, not through the tunnel, so your network can see which server addresses you have saved.</li>
+    <li><strong>To GitHub</strong>, only when you install the helper from source, to download a pinned, checksum-verified copy of the proxy engine. The packaged installers bundle the proxy engine and runtime and download nothing.</li>
   </ul>
   <p>Hovpn does not send your browsing activity anywhere except through the proxy server you selected.</p>
 

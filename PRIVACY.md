@@ -1,6 +1,6 @@
 # Hovpn Privacy Policy
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-11-27_
 
 Hovpn is a proxy client for the Chrome/Chromium/Edge/Brave browser, operated
 by Mohsen (ebmohsen.com) under the Hovpn brand (https://hovpn.vip).
@@ -22,17 +22,29 @@ developer operates no servers that receive your data through the extension.
 - The server profiles and subscription URLs you add are stored locally in the
   browser's extension storage on your own machine. They are never transmitted
   to the developer.
-- Connection settings (SOCKS port, bypass list, theme) are stored locally.
-- The local helper writes a runtime config and log file under `~/.hovpn`
-  (`%LOCALAPPDATA%\Hovpn` on Windows) on your own machine.
+- Connection settings (SOCKS port, bypass list, theme) are kept in the
+  browser's synced extension storage: if you have turned on browser sync,
+  your browser vendor copies these three settings to your other devices.
+  Server profiles and subscription URLs are not synced.
+- The local helper writes a runtime config and a diagnostic log under
+  `~/.hovpn` (`%LOCALAPPDATA%\Hovpn` on Windows), readable only by your user
+  account. The config (which holds your server's credentials) is removed when
+  you disconnect. The log holds the proxy engine's start-up messages and
+  errors and is cleared on every connect. Access logging is switched off, so
+  it keeps no record of the sites you visit; an error line can still name a
+  host that failed to connect.
 
 ## Network connections Hovpn makes
 
 - To **your** proxy server(s), as configured by you — this is the core function.
 - To **your** subscription URL, when you add or refresh a subscription, to
   download your server list. This request is made by the local helper.
-- To GitHub (`github.com` / `nodejs.org`), only during installation, to
-  download the `xray-core` and Node runtimes.
+- To each server in your list, a bare TCP connection when you open the popup,
+  to measure latency. These go directly from your computer, not through the
+  tunnel, so your network can see which server addresses you have saved.
+- To GitHub (`github.com`), only when you install the helper from source, to
+  download a pinned, checksum-verified `xray-core` release. The packaged
+  installers bundle `xray-core` and Node and download nothing.
 
 Hovpn does not send your browsing data anywhere except through the proxy
 server you chose.
