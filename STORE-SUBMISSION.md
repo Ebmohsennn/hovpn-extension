@@ -68,3 +68,14 @@ cd packaging/mac
 
 Without a notary profile it still builds a signed `.pkg`, but macOS shows a
 Gatekeeper warning until it's notarized.
+
+## Permission justification: `privacy` (added after 1.0.2)
+
+Paste into the Web Store "Privacy practices" tab when submitting the next version:
+
+> Used only to set `chrome.privacy.network.webRTCIPHandlingPolicy` to
+> `disable_non_proxied_udp` while the proxy is connected, so WebRTC cannot
+> reveal the user's real IP address outside the proxy. The setting is cleared
+> when the user disconnects. No other privacy settings are read or changed.
+
+Existing users will be asked to approve the new permission when they update.

@@ -7,7 +7,7 @@
   "homepage_url": "https://hovpn.vip",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsCLfccU2eibnXqPa8LsDVPj04HimJcNO2B06lEnuDsdhNFIIbI+a0xJMMpWW8CckU+eySfgdcoWdnCYyc0ECGzwA08lkeeoIT/n5+AAigT6VBJ/V3vHi1e7kiZx+BJ+IwEUhcJQPaPockQsUb0vWC3je3iuub+4mnfuB+6dXZ5tAAi2Wf1WpFt/bQPWAUiA7nom/LNf7EfgVQW7Baz5zZq0Dh31ZuKLkNLAt163yfIgjHxwTE+i5+whZyB11ZAZ2nYllsDer97sqNaHCtpItXgoM1MGbjFWmfaaWCym814gHyW39TvW8xWSnAx2aovuGEekuKM7t95gqe05+5MH6kQIDAQAB",
   "permissions": [
-    "proxy",
+    "proxy", "privacy",
     "storage",
     "nativeMessaging",
     "alarms",
