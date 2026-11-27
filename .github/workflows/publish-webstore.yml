@@ -42,10 +42,15 @@ jobs:
           NEW=$(node -p "require('./extension/manifest.json').version")
           # Compare with the commit main pointed at before this push, so a
           # version bump anywhere in a multi-commit push is seen.
+          # After a force-push that commit is gone; fall back to the parent
+          # commit so a history rewrite alone never triggers a publish.
           OLD=""
-          if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE:extension/manifest.json" 2>/dev/null; then
-            OLD=$(git show "$BEFORE:extension/manifest.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
-          fi
+          for REF in "$BEFORE" HEAD~1; do
+            if [ -n "$REF" ] && git cat-file -e "$REF:extension/manifest.json" 2>/dev/null; then
+              OLD=$(git show "$REF:extension/manifest.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+              break
+            fi
+          done
           echo "current=$NEW previous=$OLD event=$EVENT_NAME"
           if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$NEW" != "$OLD" ]; then
             echo "go=true" >> "$GITHUB_OUTPUT"
