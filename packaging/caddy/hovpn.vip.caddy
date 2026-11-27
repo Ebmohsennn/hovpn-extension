@@ -1,8 +1,8 @@
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  hovpn.vip · Hovpn extension site (static)
-#  ArvanCloud fronts hovpn.vip and provides public TLS; Arvan connects to this
-#  origin over plain HTTP on :8080. Served HTTP-only (no origin cert). The
+#  A CDN fronts hovpn.vip and terminates public TLS; it reaches this origin over
+#  plain HTTP. Served HTTP-only (no origin cert). The
 #  explicit bind makes this site claim the HTTP listener so it serves content
 #  instead of being caught by the automatic HTTP->HTTPS redirect.
 # ═══════════════════════════════════════════════════════════════════════════════

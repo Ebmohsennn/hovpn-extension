@@ -11,7 +11,7 @@
 # stay on your machine instead of in CI secrets. Requirements (all local):
 #   - keys/hovpn-private-key.pem   (CRX signing key)
 #   - Google Chrome                (for packing the CRX)
-#   - SSH access to 'germany-server'
+#   - SSH access to the hovpn.vip origin: set HOVPN_SERVER to its SSH host alias
 set -euo pipefail
 cd "$(dirname "$0")/.."   # repo root
 
@@ -21,7 +21,7 @@ if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
 fi
 
 KEY="keys/hovpn-private-key.pem"
-SERVER="germany-server"
+SERVER="${HOVPN_SERVER:?set HOVPN_SERVER to the SSH host alias of the hovpn.vip origin}"
 WEBROOT="/var/www/hovpn.vip/public_html"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 CRX_APPID="mbjbjjnaihiegbpjdjoflfmehppobbod"

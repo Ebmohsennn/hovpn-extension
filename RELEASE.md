@@ -3,7 +3,7 @@
 One command updates **both** distribution channels:
 
 ```bash
-./packaging/release.sh 1.0.2
+HOVPN_SERVER=<origin-ssh-alias> ./packaging/release.sh 1.0.2
 ```
 
 What it does:
@@ -21,7 +21,8 @@ What it does:
 Runs on your Mac so the sensitive keys never enter CI:
 - `keys/hovpn-private-key.pem` — the CRX signing key.
 - Google Chrome — used to pack the CRX.
-- SSH access to `germany-server` (hovpn.vip origin).
+- SSH access to the hovpn.vip origin. Set `HOVPN_SERVER` to its SSH host alias,
+  for example `HOVPN_SERVER=my-origin ./packaging/release.sh 1.0.3`.
 
 > Why not full CI for the self-hosted deploy? It would require the extension
 > signing key and the server SSH key as GitHub secrets. For a security tool,
