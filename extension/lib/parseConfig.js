@@ -1,5 +1,5 @@
-/*! Hovpn — © 2026 Mohsen (ebmohsen.com). All rights reserved. https://hovpn.vip
- *  Proprietary. Unauthorized copying, modification, or redistribution prohibited. */
+/*! Hovpn — Copyright (C) 2026 Mohsen Ebrahimizadeh (ebmohsen.com) · https://hovpn.vip
+ *  SPDX-License-Identifier: GPL-3.0-or-later · name & logo: see TRADEMARKS.md */
 // Parses vmess:// vless:// trojan:// ss:// share links into a structured
 // outbound object shaped like an Xray-core outbound (protocol/settings/streamSettings).
 

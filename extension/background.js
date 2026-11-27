@@ -1,5 +1,5 @@
-/*! Hovpn — © 2026 Mohsen (ebmohsen.com). All rights reserved. https://hovpn.vip
- *  Proprietary. Unauthorized copying, modification, or redistribution prohibited. */
+/*! Hovpn — Copyright (C) 2026 Mohsen Ebrahimizadeh (ebmohsen.com) · https://hovpn.vip
+ *  SPDX-License-Identifier: GPL-3.0-or-later · name & logo: see TRADEMARKS.md */
 // Service worker: owns chrome.proxy state and talks to the native host
 // (native-host/xray-manager.js) which starts/stops a local xray-core process.
 // Also runs a periodic background health check (chrome.alarms) so crash

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-/*! Hovpn — © 2026 Mohsen (ebmohsen.com). All rights reserved. https://hovpn.vip
- *  Proprietary. Unauthorized copying, modification, or redistribution prohibited. */
+/*! Hovpn — Copyright (C) 2026 Mohsen Ebrahimizadeh (ebmohsen.com) · https://hovpn.vip
+ *  SPDX-License-Identifier: GPL-3.0-or-later · name & logo: see TRADEMARKS.md */
 // Hovpn cross-platform installer for the native messaging host.
 //
 //   node install.js [chrome-extension-id]

@@ -1,6 +1,9 @@
 # Hovpn — secure proxy for Chrome
 
-© 2026 Mohsen ([ebmohsen.com](https://ebmohsen.com)) · [hovpn.vip](https://hovpn.vip) · Proprietary (see LICENSE)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/ifcbhfjmblebbinhgjhfmjgnkmoneifg?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/hovpn/ifcbhfjmblebbinhgjhfmjgnkmoneifg)
+[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
+
+**Install:** [Chrome Web Store](https://chromewebstore.google.com/detail/hovpn/ifcbhfjmblebbinhgjhfmjgnkmoneifg) · Website: [hovpn.vip](https://hovpn.vip) · by Mohsen Ebrahimizadeh ([ebmohsen.com](https://ebmohsen.com))
 
 Hovpn lets you paste a V2Ray/Xray share link (`vmess://`, `vless://`,
 `trojan://`, `ss://`) or a **subscription URL** and route **only the
@@ -232,3 +235,16 @@ tick, so a persistently broken connection doesn't spam you.
   or `taskkill` on Windows) to see both the popup's "(auto-restarted)" state
   and — if you wait up to a minute with the popup closed — the background
   desktop notification.
+
+## License
+
+Copyright (C) 2026 Mohsen Ebrahimizadeh.
+
+Hovpn is free software: you can redistribute it and/or modify it under the
+terms of the [GNU General Public License v3.0 or later](LICENSE).
+
+The Hovpn name, logo and icons are not covered by the GPL. If you publish a
+fork, give it its own name and icons. See [TRADEMARKS.md](TRADEMARKS.md).
+
+Xray-core, which the installer downloads, is a separate project under the
+Mozilla Public License 2.0.
