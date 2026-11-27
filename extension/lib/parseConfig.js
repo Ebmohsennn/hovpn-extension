@@ -13,6 +13,20 @@ function b64decode(str) {
   return atob(fixBase64Padding(str));
 }
 
+// Share links are untrusted (pasted, or fetched from a subscription). Reject
+// anything without a usable host and port, and make sure the display name is
+// always a string — a numeric "ps" used to break sorting in the popup.
+function finish(outbound) {
+  const { address, port } = outbound;
+  if (typeof address !== 'string' || !address.trim()) throw new Error('missing server address');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('missing or invalid port');
+  const remark = outbound.remark;
+  outbound.remark = (typeof remark === 'string' || typeof remark === 'number') && String(remark).trim()
+    ? String(remark)
+    : address;
+  return { ok: true, outbound };
+}
+
 function buildStreamSettings(network, security, opts = {}) {
   const stream = { network: network || 'tcp', security: security || 'none' };
 
@@ -49,12 +63,11 @@ function parseVmess(uri) {
     const network = json.net || 'tcp';
     const security = json.tls === 'tls' || json.tls === 'reality' ? 'tls' : 'none';
     const port = parseInt(json.port, 10);
+    if (typeof json.add !== 'string') throw new Error('missing server address');
 
-    return {
-      ok: true,
-      outbound: {
+    return finish({
         protocol: 'vmess',
-        remark: json.ps || json.add,
+        remark: json.ps,
         address: json.add,
         port,
         settings: {
@@ -67,8 +80,7 @@ function parseVmess(uri) {
         streamSettings: buildStreamSettings(network, security, {
           sni: json.sni, host: json.host, path: json.path, serviceName: json.path
         })
-      }
-    };
+    });
   } catch (e) {
     return { ok: false, error: 'Failed to parse vmess link: ' + e.message };
   }
@@ -85,9 +97,7 @@ function parseVless(uri) {
     const security = params.get('security') || 'none';
     const remark = decodeURIComponent((u.hash || '').replace(/^#/, '')) || address;
 
-    return {
-      ok: true,
-      outbound: {
+    return finish({
         protocol: 'vless',
         remark, address, port,
         settings: {
@@ -101,8 +111,7 @@ function parseVless(uri) {
           serviceName: params.get('serviceName'), pbk: params.get('pbk'), sid: params.get('sid'),
           fp: params.get('fp'), mode: params.get('mode')
         })
-      }
-    };
+    });
   } catch (e) {
     return { ok: false, error: 'Failed to parse vless link: ' + e.message };
   }
@@ -119,9 +128,7 @@ function parseTrojan(uri) {
     const security = params.get('security') || 'tls';
     const remark = decodeURIComponent((u.hash || '').replace(/^#/, '')) || address;
 
-    return {
-      ok: true,
-      outbound: {
+    return finish({
         protocol: 'trojan',
         remark, address, port,
         settings: { servers: [{ address, port, password }] },
@@ -130,8 +137,7 @@ function parseTrojan(uri) {
           serviceName: params.get('serviceName'), pbk: params.get('pbk'), sid: params.get('sid'),
           fp: params.get('fp'), mode: params.get('mode')
         })
-      }
-    };
+    });
   } catch (e) {
     return { ok: false, error: 'Failed to parse trojan link: ' + e.message };
   }
@@ -165,16 +171,13 @@ function parseShadowsocks(uri) {
       port = parseInt(match[4], 10);
     }
 
-    return {
-      ok: true,
-      outbound: {
+    return finish({
         protocol: 'shadowsocks',
         remark: remark || address,
         address, port,
         settings: { servers: [{ address, port, method, password }] },
         streamSettings: { network: 'tcp', security: 'none' }
-      }
-    };
+    });
   } catch (e) {
     return { ok: false, error: 'Failed to parse shadowsocks link: ' + e.message };
   }

@@ -9,7 +9,8 @@
 // GitHub secret CWS_REFRESH_TOKEN. Run it locally — never commit the output.
 
 const http = require('http');
-const { exec } = require('child_process');
+const crypto = require('crypto');
+const { spawn } = require('child_process');
 
 const [, , CLIENT_ID, CLIENT_SECRET] = process.argv;
 if (!CLIENT_ID || !CLIENT_SECRET) {
@@ -18,21 +19,25 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
 }
 
 const PORT = 8976;
-const REDIRECT = `http://localhost:${PORT}`;
+const REDIRECT = `http://127.0.0.1:${PORT}`;
 const SCOPE = 'https://www.googleapis.com/auth/chromewebstore';
+// Ties the browser's redirect back to this run, so another page can't feed us a code.
+const STATE = crypto.randomBytes(16).toString('hex');
 const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
   client_id: CLIENT_ID,
   redirect_uri: REDIRECT,
   response_type: 'code',
   scope: SCOPE,
   access_type: 'offline',
-  prompt: 'consent'
+  prompt: 'consent',
+  state: STATE
 });
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, REDIRECT);
   const code = url.searchParams.get('code');
   if (!code) { res.statusCode = 400; res.end('No authorization code.'); return; }
+  if (url.searchParams.get('state') !== STATE) { res.statusCode = 400; res.end('State mismatch.'); return; }
   res.end('Hovpn: got it. You can close this tab and return to the terminal.');
   server.close();
   try {
@@ -56,10 +61,13 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+// Loopback only: the authorization code must not be reachable from the network.
+server.listen(PORT, '127.0.0.1', () => {
   console.log('\n1) Approve in your browser (opening now). If it does not open, paste this URL:\n');
   console.log('   ' + authUrl + '\n');
-  const opener = process.platform === 'darwin' ? 'open'
-    : process.platform === 'win32' ? 'start' : 'xdg-open';
-  exec(`${opener} "${authUrl}"`);
+  // No shell: the URL is passed as a single argument.
+  const [cmd, args] = process.platform === 'darwin' ? ['open', [authUrl]]
+    : process.platform === 'win32' ? ['rundll32', ['url.dll,FileProtocolHandler', authUrl]]
+      : ['xdg-open', [authUrl]];
+  try { spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => {}).unref(); } catch { /* paste the URL instead */ }
 });

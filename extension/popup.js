@@ -577,15 +577,15 @@ function sortProfiles(list, sortBy) {
   if (sortBy === 'latency') {
     arr.sort((a, b) => {
       const la = latencies[a.id], lb = latencies[b.id];
-      if (la == null && lb == null) return a.name.localeCompare(b.name);
+      if (la == null && lb == null) return String(a.name ?? '').localeCompare(String(b.name ?? ''));
       if (la == null) return 1;
       if (lb == null) return -1;
       return la - lb;
     });
   } else if (sortBy === 'name') {
-    arr.sort((a, b) => a.name.localeCompare(b.name));
+    arr.sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')));
   } else {
-    arr.sort((a, b) => (Number(b.favorite) - Number(a.favorite)) || a.name.localeCompare(b.name));
+    arr.sort((a, b) => (Number(b.favorite) - Number(a.favorite)) || String(a.name ?? '').localeCompare(String(b.name ?? '')));
   }
   return arr;
 }
@@ -661,3 +661,9 @@ async function render() {
 }
 
 render().then(() => testLatency(cachedProfiles));
+
+// Footer version comes from the manifest so it can't drift from the release.
+{
+  const verEl = document.getElementById('appVersion');
+  if (verEl) verEl.textContent = 'v' + chrome.runtime.getManifest().version;
+}

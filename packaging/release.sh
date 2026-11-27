@@ -33,6 +33,7 @@ echo "== 1/6  set version $VERSION in extension/manifest.json =="
 HOVPN_VER="$VERSION" node -e "const fs=require('fs'),p='extension/manifest.json',m=JSON.parse(fs.readFileSync(p));m.version=process.env.HOVPN_VER;fs.writeFileSync(p,JSON.stringify(m,null,2)+'\n')"
 
 echo "== 2/6  rebuild Web Store zip (key stripped) =="
+mkdir -p packaging/store
 rm -rf packaging/store/build packaging/store/hovpn-store.zip
 cp -R extension packaging/store/build
 node -e "const fs=require('fs'),p='packaging/store/build/manifest.json',m=JSON.parse(fs.readFileSync(p));delete m.key;fs.writeFileSync(p,JSON.stringify(m,null,2)+'\n')"
@@ -40,12 +41,14 @@ find packaging/store/build -name '.DS_Store' -delete
 ( cd packaging/store/build && zip -rq ../hovpn-store.zip . -x '*.DS_Store' )
 
 echo "== 3/6  rebuild + sign CRX =="
-rm -rf /tmp/hovpn-crx-rel && mkdir -p /tmp/hovpn-crx-rel
-cp -R extension /tmp/hovpn-crx-rel/hovpn
-find /tmp/hovpn-crx-rel/hovpn -name '.DS_Store' -delete
-"$CHROME" --pack-extension=/tmp/hovpn-crx-rel/hovpn --pack-extension-key="$PWD/$KEY" --no-message-box >/dev/null 2>&1 || true
-[ -f /tmp/hovpn-crx-rel/hovpn.crx ] || { echo "ERROR: CRX packing failed" >&2; exit 1; }
-cp /tmp/hovpn-crx-rel/hovpn.crx packaging/crx/hovpn.crx
+# A private, unpredictable directory: this tree is what gets signed.
+CRX_TMP=$(mktemp -d "${TMPDIR:-/tmp}/hovpn-crx-rel.XXXXXX")
+trap 'rm -rf "$CRX_TMP"' EXIT
+cp -R extension "$CRX_TMP/hovpn"
+find "$CRX_TMP/hovpn" -name '.DS_Store' -delete
+"$CHROME" --pack-extension="$CRX_TMP/hovpn" --pack-extension-key="$PWD/$KEY" --no-message-box >/dev/null 2>&1 || true
+[ -f "$CRX_TMP/hovpn.crx" ] || { echo "ERROR: CRX packing failed" >&2; exit 1; }
+cp "$CRX_TMP/hovpn.crx" packaging/crx/hovpn.crx
 
 echo "== 4/6  write updates.xml ($VERSION) =="
 cat > packaging/crx/updates.xml <<XML
@@ -65,9 +68,10 @@ LIVE=$(curl -sS --max-time 20 https://hovpn.vip/updates.xml | grep -o "version='
 echo "   self-hosted updates.xml now serves: $LIVE"
 
 echo "== 6/6  commit + push (triggers Web Store publish CI) =="
-git add -A
-git commit -q -m "Release $VERSION (Web Store + self-hosted)" \
-  -m "Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
+# Only the files this script changed: `git add -A` would publish whatever else
+# happens to be lying in the working tree.
+git add extension/manifest.json packaging/crx/updates.xml
+git commit -q -m "Release $VERSION (Web Store + self-hosted)"
 git push -q origin main
 
 echo ""

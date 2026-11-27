@@ -9,6 +9,7 @@
 const os = require('os');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { spawnSync } = require('child_process');
 
 const IS_WIN = process.platform === 'win32';
@@ -33,22 +34,33 @@ function assetName() {
   throw new Error(`Unsupported platform: ${process.platform}/${a}`);
 }
 
-async function latestTag() {
-  const res = await fetch('https://api.github.com/repos/XTLS/Xray-core/releases/latest', {
-    headers: { 'User-Agent': 'Hovpn-installer' },
-    signal: AbortSignal.timeout(15000)
-  });
-  if (!res.ok) throw new Error(`GitHub API returned HTTP ${res.status}`);
-  const json = await res.json();
-  if (!json.tag_name) throw new Error('Could not determine latest xray release');
-  return json.tag_name;
+// The xray-core release this installer downloads, and the SHA-256 of each
+// asset as published in that release's .dgst files. Pinned on purpose: the
+// binary runs as the user, so "whatever is latest" is not good enough.
+// To upgrade, change XRAY_VERSION and replace every hash from
+//   https://github.com/XTLS/Xray-core/releases/download/<version>/<asset>.dgst
+// (keep packaging/mac/fetch-binaries.sh and the Windows workflow in step).
+const XRAY_VERSION = 'v26.3.27';
+const XRAY_SHA256 = {
+  'Xray-macos-arm64-v8a.zip': '2e93a67e8aa1936ecefb307e120830fcbd4c643ab9b1c46a2d0838d5f8409eaf',
+  'Xray-macos-64.zip': 'f5b0471d3459eff1b82e48af0aeac186abcc3298210070afbbbd8437a4e8b203',
+  'Xray-windows-arm64-v8a.zip': '35d4ed6ec21224fb22b07c2c3f672e2350cd536f2c74d309150175a76365ea88',
+  'Xray-windows-32.zip': '956a5ec00bce747c7936dc4ff7ac570df1c8030b0a4a8640f843488365084db3',
+  'Xray-windows-64.zip': 'd004c39288ce9ada487c6f398c7c545f7d749e44bdfdd59dbc9f865afba4e1ad',
+  'Xray-linux-arm64-v8a.zip': '4d30283ae614e3057f730f67cd088a42be6fdf91f8639d82cb69e48cde80413c',
+  'Xray-linux-64.zip': '23cd9af937744d97776ee35ecad4972cf4b2109d1e0fe6be9930467608f7c8ae'
+};
+
+// PowerShell single-quoted strings escape a quote by doubling it.
+function psQuote(s) {
+  return "'" + String(s).replace(/'/g, "''") + "'";
 }
 
 // Unzip using whatever ships with the OS (no npm deps): PowerShell on Windows,
 // `unzip` on macOS/Linux (with a `jar`/python fallback if unzip is absent).
 function extract(zipPath, destDir) {
   if (IS_WIN) {
-    const ps = `Expand-Archive -LiteralPath '${zipPath}' -DestinationPath '${destDir}' -Force`;
+    const ps = `Expand-Archive -LiteralPath ${psQuote(zipPath)} -DestinationPath ${psQuote(destDir)} -Force`;
     const r = spawnSync('powershell', ['-NoProfile', '-Command', ps], { windowsHide: true });
     if (r.status !== 0) throw new Error('Expand-Archive failed: ' + (r.stderr || '').toString());
     return;
@@ -70,13 +82,19 @@ async function main() {
   fs.mkdirSync(BIN_DIR, { recursive: true });
 
   const asset = assetName();
-  const tag = await latestTag();
+  const tag = XRAY_VERSION;
+  const expected = XRAY_SHA256[asset];
+  if (!expected) throw new Error(`No pinned checksum for ${asset}`);
   const url = `https://github.com/XTLS/Xray-core/releases/download/${tag}/${asset}`;
   console.log(`Downloading xray-core ${tag} (${asset})…`);
 
   const res = await fetch(url, { headers: { 'User-Agent': 'Hovpn-installer' }, redirect: 'follow', signal: AbortSignal.timeout(120000) });
   if (!res.ok) throw new Error(`Download failed: HTTP ${res.status}`);
   const buf = Buffer.from(await res.arrayBuffer());
+  const actual = crypto.createHash('sha256').update(buf).digest('hex');
+  if (actual !== expected) {
+    throw new Error(`Checksum mismatch for ${asset}: expected ${expected}, got ${actual}. Nothing was installed.`);
+  }
   const zipPath = path.join(BIN_DIR, asset);
   fs.writeFileSync(zipPath, buf);
 
@@ -92,4 +110,4 @@ if (require.main === module) {
   main().catch((e) => { console.error('ERROR:', e.message); process.exit(1); });
 }
 
-module.exports = { XRAY_PATH, BIN_DIR, assetName };
+module.exports = { XRAY_PATH, BIN_DIR, assetName, XRAY_VERSION, XRAY_SHA256 };
