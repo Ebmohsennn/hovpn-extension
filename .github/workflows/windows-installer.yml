@@ -8,14 +8,25 @@ on:
       - '.github/workflows/windows-installer.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 30
     env:
+      # Versions and SHA-256 of the binaries bundled into the installer. The hashes come from
+      # https://nodejs.org/dist/<version>/SHASUMS256.txt and the .dgst file next to the xray
+      # release asset; change them together with the versions.
       NODE_VER: v24.18.0
+      NODE_SHA256: 9a4eb5f1c29c6a2e93852ead46b999e284a6a5ca8bab4d4e241d587d025a52de
       XRAY_VER: v26.3.27
+      XRAY_SHA256: d004c39288ce9ada487c6f398c7c545f7d749e44bdfdd59dbc9f865afba4e1ad
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Stage host script
         shell: pwsh
@@ -24,10 +35,20 @@ jobs:
       - name: Download bundled node.exe + xray.exe (x64)
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
+          function Assert-Sha256([string]$Path, [string]$Expected) {
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLower()
+            if ($actual -ne $Expected.ToLower()) {
+              throw "Checksum mismatch for ${Path}: expected $Expected, got $actual"
+            }
+            Write-Host "sha256 ok: $Path"
+          }
           $bin = "packaging/windows/bin"
           New-Item -ItemType Directory -Force -Path $bin | Out-Null
           Invoke-WebRequest -Uri "https://nodejs.org/dist/$env:NODE_VER/win-x64/node.exe" -OutFile "$bin/node.exe"
+          Assert-Sha256 "$bin/node.exe" $env:NODE_SHA256
           Invoke-WebRequest -Uri "https://github.com/XTLS/Xray-core/releases/download/$env:XRAY_VER/Xray-windows-64.zip" -OutFile "$env:TEMP/xray.zip"
+          Assert-Sha256 "$env:TEMP/xray.zip" $env:XRAY_SHA256
           Expand-Archive -Path "$env:TEMP/xray.zip" -DestinationPath "$env:TEMP/xray" -Force
           Copy-Item "$env:TEMP/xray/xray.exe" "$bin/xray.exe"
           Get-ChildItem $bin
@@ -57,7 +78,7 @@ jobs:
         run: node smoke-test.js
 
       - name: Upload installer artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: Hovpn-Setup-Windows
           path: packaging/windows/out/Hovpn-Setup.exe

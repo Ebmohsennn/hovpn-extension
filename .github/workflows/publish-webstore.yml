@@ -10,25 +10,44 @@ on:
       - 'extension/**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-webstore
+  cancel-in-progress: false
+
 env:
   ITEM_ID: ifcbhfjmblebbinhgjhfmjgnkmoneifg   # Hovpn's Web Store item id (public)
+  # Exact version on purpose: this tool is handed the publishing credentials.
+  # Review the changelog before raising it.
+  CWS_CLI: chrome-webstore-upload-cli@3.5.0
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          fetch-depth: 2   # need the previous commit to detect a version change
+          fetch-depth: 0              # need the pre-push commit to detect a version change
+          persist-credentials: false
 
       - name: Decide whether to publish
         id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
         run: |
           NEW=$(node -p "require('./extension/manifest.json').version")
-          git show HEAD~1:extension/manifest.json > /tmp/old.json 2>/dev/null || echo '{}' > /tmp/old.json
-          OLD=$(node -p "try { require('/tmp/old.json').version } catch (e) { '' }")
-          echo "current=$NEW previous=$OLD event=${{ github.event_name }}"
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$NEW" != "$OLD" ]; then
+          # Compare with the commit main pointed at before this push, so a
+          # version bump anywhere in a multi-commit push is seen.
+          OLD=""
+          if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE:extension/manifest.json" 2>/dev/null; then
+            OLD=$(git show "$BEFORE:extension/manifest.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")
+          fi
+          echo "current=$NEW previous=$OLD event=$EVENT_NAME"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$NEW" != "$OLD" ]; then
             echo "go=true" >> "$GITHUB_OUTPUT"
           else
             echo "go=false" >> "$GITHUB_OUTPUT"
@@ -37,11 +56,15 @@ jobs:
 
       - name: Verify secrets are configured
         if: steps.gate.outputs.go == 'true'
+        env:
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
         run: |
           missing=""
-          [ -z "${{ secrets.CWS_CLIENT_ID }}" ] && missing="$missing CWS_CLIENT_ID"
-          [ -z "${{ secrets.CWS_CLIENT_SECRET }}" ] && missing="$missing CWS_CLIENT_SECRET"
-          [ -z "${{ secrets.CWS_REFRESH_TOKEN }}" ] && missing="$missing CWS_REFRESH_TOKEN"
+          [ -z "$CLIENT_ID" ] && missing="$missing CWS_CLIENT_ID"
+          [ -z "$CLIENT_SECRET" ] && missing="$missing CWS_CLIENT_SECRET"
+          [ -z "$REFRESH_TOKEN" ] && missing="$missing CWS_REFRESH_TOKEN"
           if [ -n "$missing" ]; then
             echo "::error::Missing GitHub secrets:$missing — see WEBSTORE-PUBLISH.md"
             exit 1
@@ -57,18 +80,17 @@ jobs:
           ( cd build && zip -rq ../hovpn-store.zip . )
           echo "built hovpn-store.zip ($(node -p "require('./extension/manifest.json').version"))"
 
+      # The credentials reach the CLI through the environment (it reads
+      # EXTENSION_ID, CLIENT_ID, CLIENT_SECRET and REFRESH_TOKEN), never through
+      # the command line or the script text.
       - name: Upload + publish to Chrome Web Store
         if: steps.gate.outputs.go == 'true'
+        env:
+          EXTENSION_ID: ${{ env.ITEM_ID }}
+          CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
         run: |
-          npx --yes chrome-webstore-upload-cli@3 upload \
-            --source hovpn-store.zip \
-            --extension-id "$ITEM_ID" \
-            --client-id "${{ secrets.CWS_CLIENT_ID }}" \
-            --client-secret "${{ secrets.CWS_CLIENT_SECRET }}" \
-            --refresh-token "${{ secrets.CWS_REFRESH_TOKEN }}"
-          npx --yes chrome-webstore-upload-cli@3 publish \
-            --extension-id "$ITEM_ID" \
-            --client-id "${{ secrets.CWS_CLIENT_ID }}" \
-            --client-secret "${{ secrets.CWS_CLIENT_SECRET }}" \
-            --refresh-token "${{ secrets.CWS_REFRESH_TOKEN }}"
+          npx --yes "$CWS_CLI" upload --source hovpn-store.zip
+          npx --yes "$CWS_CLI" publish
           echo "::notice::Uploaded + submitted for review. It goes live after Google's review passes."
