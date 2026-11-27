@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-/*! Hovpn — © 2026 Mohsen (ebmohsen.com). All rights reserved. https://hovpn.vip
- *  Proprietary. Unauthorized copying, modification, or redistribution prohibited. */
+/*! Hovpn — Copyright (C) 2026 Mohsen Ebrahimizadeh (ebmohsen.com) · https://hovpn.vip
+ *  SPDX-License-Identifier: GPL-3.0-or-later · name & logo: see TRADEMARKS.md */
 // Cross-platform xray-core fetcher. Downloads the correct prebuilt binary for
 // the current OS/arch from the official XTLS/Xray-core releases and unpacks it
 // into the Hovpn bin directory, so end users don't need to install xray
